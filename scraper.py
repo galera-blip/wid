@@ -41,14 +41,17 @@ def parse_schedule_from_image(image_url, default_company):
         Analyze this ferry schedule flyer image.
 
         STRICT RULES:
-        1. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
-        2. "BALATERO TO BATANGAS" maps to "toBAT".
-        3. "BATANGAS TO BALATERO" maps to "toPG".
-        4. If a trip is marked "CANCELLED" or "SUSPENDED", set "status": "CANCELLED" and "note": "CANCELLED TODAY".
-        5. Default "type": "Fastcraft". Extract vessel name (e.g. PTERIPPUS 1) if available.
+        1. Look for the effective date on the flyer (e.g., "Schedule for August 11", "Tomorrow's Schedule", or "Effective Today").
+           - Set "effective_date": "YYYY-MM-DD" if a specific date is shown, or "TODAY" / "TOMORROW" based on text context.
+        2. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
+        3. "BALATERO TO BATANGAS" maps to "toBAT".
+        4. "BATANGAS TO BALATERO" maps to "toPG".
+        5. If a trip is marked "CANCELLED" or "SUSPENDED", set "status": "CANCELLED" and "note": "CANCELLED".
+        6. Default "type": "Fastcraft". Extract vessel name (e.g., PTERIPPUS 1) if available.
 
         Return ONLY raw JSON in this structure:
         {{
+          "effective_date": "TODAY",
           "toPG": [
             {{"company": "{default_company}", "type": "Fastcraft", "vessel": "PTERIPPUS 1", "time": "12:45 PM", "status": "SCHEDULED", "note": ""}}
           ],
