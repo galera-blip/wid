@@ -2,44 +2,46 @@ name: Daily Ferry Schedule Sync
 
 on:
   schedule:
-    - cron: '30 21 * * *'
+    # Runs daily at 5:00 AM PHT (21:00 UTC)
+    - cron: '0 21 * * *'
   workflow_dispatch:
     inputs:
       image_url:
-        description: 'Direct FB Image URL'
+        description: 'Direct FB Image URL (optional)'
         required: false
-        default: ''
+        type: string
   repository_dispatch:
-    types: [facebook_post]
+    types: [fb_image_payload]
 
 jobs:
   update-schedule:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
-          pip install google-generativeai requests
+          python -m pip install --upgrade pip
+          pip install google-genai requests
 
-      - name: Run Scraper Script
+      - name: Run schedule scraper
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PAYLOAD_IMAGE_URL: ${{ github.event.client_payload.image_url }}
-          INPUT_IMAGE_URL: ${{ github.event.inputs.image_url }}
+          INPUT_IMAGE_URL: ${{ inputs.image_url }}
         run: python scraper.py
 
-      - name: Commit and Push Changes to GitHub
+      - name: Commit and push changes
         run: |
           git config --global user.name 'Schedule Bot'
           git config --global user.email 'bot@galeraguide.com'
           git add index.html
-          git commit -m "Auto-synced daily schedules from Facebook [skip ci]" || exit 0
+          git commit -m "Auto-synced daily schedules [skip ci]" || exit 0
           git push
