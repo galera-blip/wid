@@ -54,6 +54,9 @@
     --bg: #FAFAFA;
     --card-bg: #FFFFFF;
     --muted: #7A8C9A;
+    --red: #EF4444;
+    --red-bg: #FEF2F2;
+    --red-border: #FCA5A5;
   }
   *{box-sizing:border-box;}
   body{
@@ -234,7 +237,16 @@
     display:flex;
     align-items:center;
     gap:14px;
+    transition: all 0.15s ease;
   }
+  
+  /* Cancelled trip card styling */
+  .card.cancelled {
+    background-color: var(--red-bg);
+    border-color: var(--red-border);
+    opacity: 0.85;
+  }
+
   .icon{
     flex:0 0 auto;
     width:44px;
@@ -245,7 +257,12 @@
     align-items:center;
     justify-content:center;
   }
+  .card.cancelled .icon {
+    background: #FEE2E2;
+  }
   .icon svg{width:22px;height:22px;stroke:var(--navy);}
+  .card.cancelled .icon svg{stroke:var(--red);}
+
   .info{
     flex:1 1 auto;
     min-width:0;
@@ -267,12 +284,36 @@
     text-underline-offset:3px;
     line-height:1.25;
   }
+  .vessel {
+    font-size:12px;
+    color:var(--muted);
+    font-weight:600;
+    margin-top:2px;
+  }
   .note{
     font-size:11.5px;
     color:var(--orange-dark);
     font-weight:600;
     margin-top:3px;
   }
+  .card.cancelled .note {
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  .badge-cancelled {
+    background-color: var(--red);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+
   .right{
     flex:0 0 auto;
     text-align:right;
@@ -288,6 +329,11 @@
     color:var(--navy);
     white-space:nowrap;
   }
+  .card.cancelled .time {
+    color: var(--red);
+    text-decoration: line-through;
+  }
+
   .btn{
     display:inline-block;
     background:var(--orange);
@@ -462,6 +508,7 @@
   const RATES_BASE_URL = "https://galeraguide.com/puerto-galera-ferry-rates";
   const companyAnchors = {
     "Galerian Water": "galerian-rates",
+    "Galerian Water Transport Services": "galerian-rates",
     "Montenegro": "montenegro-rates",
     "Island Water": "islandwater-rates",
     "Island Simara": "islasimara-rates"
@@ -474,7 +521,6 @@
 
   const schedule = {
     toPG: [
-      //{type:"Fastcraft", company:"Galerian Water", time:"6:30 AM"},
       {type:"Fastcraft", company:"Island Water", time:"7:30 AM"},
       {type:"RoRo", company:"Montenegro", time:"8:00 AM"},
       {type:"Fastcraft", company:"Galerian Water", time:"9:45 AM"},
@@ -490,7 +536,6 @@
       {type:"Fastcraft", company:"Montenegro", time:"9:30 AM"},
       {type:"Fastcraft", company:"Galerian Water", time:"10:00 AM"},
       {type:"Fastcraft", company:"Island Water", time:"11:00 AM"},
-      //{type:"Fastcraft", company:"Galerian Water", time:"11:45 AM"},
       {type:"Fastcraft", company:"Montenegro", time:"12:30 PM"},
       {type:"RoRo", company:"Island Simara", time:"1:00 PM", note:"Saturday – Sunday only"},
       {type:"Fastcraft", company:"Montenegro", time:"1:30 PM"},
@@ -511,6 +556,7 @@
   const typeFilter = document.getElementById('typeFilter');
 
   function timeToMinutes(t){
+    if(!t) return 0;
     const [time, period] = t.split(' ');
     let [h, m] = time.split(':').map(Number);
     if(period === 'PM' && h !== 12) h += 12;
@@ -521,17 +567,30 @@
   function updateNextDeparture() {
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();
-    const trips = [...schedule[currentDir]].sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
+    
+    // EXCLUDE CANCELLED TRIPS FROM COUNTDOWN
+    const activeTrips = [...schedule[currentDir]]
+      .filter(t => t.status !== "CANCELLED")
+      .sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
 
-    let nextTrip = trips.find(t => timeToMinutes(t.time) > currentMins);
+    if (activeTrips.length === 0) {
+      document.getElementById('nextBoatType').textContent = "-";
+      document.getElementById('nextCompany').textContent = "All Trips Cancelled";
+      document.getElementById('nextTime').textContent = "-";
+      document.getElementById('countdownTimer').textContent = "No active trips today";
+      if (countdownInterval) clearInterval(countdownInterval);
+      return;
+    }
+
+    let nextTrip = activeTrips.find(t => timeToMinutes(t.time) > currentMins);
     let isTomorrow = false;
 
     if (!nextTrip) {
-      nextTrip = trips[0];
+      nextTrip = activeTrips[0];
       isTomorrow = true;
     }
 
-    document.getElementById('nextBoatType').textContent = nextTrip.type;
+    document.getElementById('nextBoatType').textContent = nextTrip.type || "Fastcraft";
     document.getElementById('nextCompany').textContent = nextTrip.company;
     document.getElementById('nextTime').textContent = nextTrip.time;
 
@@ -573,7 +632,7 @@
   function populateFilters(){
     const trips = schedule[currentDir];
     const companies = [...new Set(trips.map(t=>t.company))].sort();
-    const types = [...new Set(trips.map(t=>t.type))].sort();
+    const types = [...new Set(trips.map(t=>t.type || "Fastcraft"))].sort();
 
     companyFilter.innerHTML = '<option value="all">All companies</option>' +
       companies.map(c=>`<option value="${c}">${c}</option>`).join('');
@@ -588,12 +647,13 @@
     const typeVal = typeFilter.value;
 
     const filtered = trips.filter(t=>{
+      const typeStr = t.type || "Fastcraft";
       const matchesQuery = !q ||
         t.time.toLowerCase().includes(q) ||
         t.company.toLowerCase().includes(q) ||
-        t.type.toLowerCase().includes(q);
+        typeStr.toLowerCase().includes(q);
       const matchesCompany = companyVal === 'all' || t.company === companyVal;
-      const matchesType = typeVal === 'all' || t.type === typeVal;
+      const matchesType = typeVal === 'all' || typeStr === typeVal;
       return matchesQuery && matchesCompany && matchesType;
     });
 
@@ -606,20 +666,28 @@
     }
     emptyState.style.display = 'none';
 
-    cardList.innerHTML = filtered.map(t => `
-      <div class="card">
-        <div class="icon">${iconFor(t.type)}</div>
-        <div class="info">
-          <div class="boat-type">${t.type}</div>
-          <div class="company">${t.company}</div>
-          ${t.note ? `<div class="note">${t.note}</div>` : ''}
+    cardList.innerHTML = filtered.map(t => {
+      const isCancelled = t.status === "CANCELLED";
+      const typeStr = t.type || "Fastcraft";
+      const noteText = t.note || (isCancelled ? "CANCELLED TODAY" : "");
+
+      return `
+        <div class="card ${isCancelled ? 'cancelled' : ''}">
+          <div class="icon">${iconFor(typeStr)}</div>
+          <div class="info">
+            <div class="boat-type">${typeStr}</div>
+            <div class="company">${t.company}</div>
+            ${t.vessel ? `<div class="vessel">${t.vessel}</div>` : ''}
+            ${noteText ? `<div class="note">${isCancelled ? '⚠️ ' : ''}${noteText}</div>` : ''}
+          </div>
+          <div class="right">
+            ${isCancelled ? '<span class="badge-cancelled">Cancelled</span>' : ''}
+            <div class="time">${t.time}</div>
+            <a class="btn" href="${ratesLink(t.company)}" target="_blank" rel="noopener">Check Rates</a>
+          </div>
         </div>
-        <div class="right">
-          <div class="time">${t.time}</div>
-          <a class="btn" href="${ratesLink(t.company)}" target="_blank" rel="noopener">Check Rates</a>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   document.querySelectorAll('.tab').forEach(tab=>{
