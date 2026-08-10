@@ -2,45 +2,44 @@ import os
 import re
 import json
 import requests
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+# Initialize official google-genai client
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
 PAGES = [
     {"company": "Galerian Water Transport Services", "url": "https://www.facebook.com/profile.php?id=61556530050083"},
     {"company": "Island Water", "url": "https://www.facebook.com/islandwater.ph"}
 ]
 
-def get_latest_post_image(page_url):
-    """Fallback fetch method."""
-    try:
-        clean_path = page_url.rstrip("/").split("/")[-1]
-        mbasic_url = f"https://mbasic.facebook.com/{clean_path}?v=timeline"
-        headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36"}
-        res = requests.get(mbasic_url, headers=headers, timeout=10)
-        matches = re.findall(r'href="([^"]*photo\.php[^"]*)"', res.text)
-        if matches:
-            photo_page_url = "https://mbasic.facebook.com" + matches[0].replace("&amp;", "&")
-            photo_res = requests.get(photo_page_url, headers=headers, timeout=10)
-            img_match = re.search(r'src="([^"]*scontent[^"]*)"', photo_res.text)
-            if img_match:
-                return img_match.group(1).replace("&amp;", "&")
-    except Exception as e:
-        print(f"Could not fetch image for {page_url}: {e}")
-    return None
+def get_direct_image_bytes(url):
+    """Downloads raw image bytes and resolves HTML photo pages if needed."""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    res = requests.get(url, headers=headers, timeout=15)
+    
+    # If the URL is a Facebook HTML photo page rather than a direct image link
+    if "text/html" in res.headers.get("Content-Type", ""):
+        match = re.search(r'src="([^"]*scontent[^"]*)"', res.text)
+        if match:
+            direct_url = match.group(1).replace("&amp;", "&")
+            return requests.get(direct_url, headers=headers, timeout=15).content
+        else:
+            print(f"Could not extract direct image URL from HTML page: {url}")
+            return None
+            
+    return res.content
 
 def parse_schedule_from_image(image_url, default_company):
     """Sends flyer image to Gemini AI to extract schedules."""
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        img_data = requests.get(image_url, headers=headers, timeout=15).content
-        
-        # Upgraded to Gemini 2.5 Flash for faster & more accurate visual extraction
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        
+        img_bytes = get_direct_image_bytes(image_url)
+        if not img_bytes:
+            return None
+
         prompt = f"""
         Analyze this ferry schedule flyer image.
-        
+
         STRICT RULES:
         1. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
         2. "BALATERO TO BATANGAS" maps to "toBAT".
@@ -58,13 +57,19 @@ def parse_schedule_from_image(image_url, default_company):
           ]
         }}
         """
-        
-        response = model.generate_content([
-            prompt, 
-            {"mime_type": "image/jpeg", "data": img_data}
-        ])
-        
-        # Resilient JSON Extraction
+
+        # Updated to active model string & modern google-genai SDK
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=[
+                prompt,
+                types.Part.from_bytes(
+                    data=img_bytes,
+                    mime_type="image/jpeg"
+                )
+            ]
+        )
+
         match = re.search(r'\{[\s\S]*\}', response.text)
         if match:
             return json.loads(match.group(0))
@@ -82,7 +87,7 @@ def update_index_html(fresh_schedule):
         html = f.read()
 
     json_str = json.dumps(fresh_schedule, indent=2)
-    
+
     updated_html = re.sub(
         r'const schedule = \{[\s\S]*?\};',
         f'const schedule = {json_str};',
@@ -95,7 +100,6 @@ def update_index_html(fresh_schedule):
 if __name__ == "__main__":
     combined_schedule = {"toPG": [], "toBAT": []}
 
-    # Check for direct image URLs passed via Make.com or Manual Workflow Input
     payload_url = os.environ.get("PAYLOAD_IMAGE_URL", "").strip()
     manual_url = os.environ.get("INPUT_IMAGE_URL", "").strip()
     target_url = payload_url or manual_url
@@ -106,14 +110,6 @@ if __name__ == "__main__":
         if data:
             combined_schedule["toPG"].extend(data.get("toPG", []))
             combined_schedule["toBAT"].extend(data.get("toBAT", []))
-    else:
-        for page in PAGES:
-            image_url = get_latest_post_image(page["url"])
-            if image_url:
-                data = parse_schedule_from_image(image_url, page["company"])
-                if data:
-                    combined_schedule["toPG"].extend(data.get("toPG", []))
-                    combined_schedule["toBAT"].extend(data.get("toBAT", []))
 
     if combined_schedule["toPG"] or combined_schedule["toBAT"]:
         update_index_html(combined_schedule)
