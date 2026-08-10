@@ -5,50 +5,82 @@ import requests
 from google import genai
 from google.genai import types
 
-# Initialize modern SDK client
+# Initialize official google-genai client
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-def get_direct_image_bytes(url):
-    """Downloads image bytes and handles FB photo page URLs if passed."""
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    res = requests.get(url, headers=headers, timeout=15)
+def get_direct_image_payload(url):
+    """
+    Downloads image bytes and dynamically resolves Facebook photo pages
+    to direct image sources. Returns a tuple: (image_bytes, mime_type).
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+    }
     
-    # If a Facebook HTML photo webpage was passed instead of direct .jpg
-    if "text/html" in res.headers.get("Content-Type", ""):
-        match = re.search(r'src="([^"]*scontent[^"]*)"', res.text)
-        if match:
-            direct_url = match.group(1).replace("&amp;", "&")
-            return requests.get(direct_url, headers=headers, timeout=15).content
-        else:
-            print(f"Could not resolve direct image from HTML URL: {url}")
-            return None
+    try:
+        res = requests.get(url, headers=headers, timeout=15)
+        content_type = res.headers.get("Content-Type", "").lower()
+        
+        # If passed URL is a Facebook HTML page, extract the raw image source
+        if "text/html" in content_type:
+            direct_url = None
             
-    return res.content
+            # Strategy A: OpenGraph Image Meta Tag (Most reliable on FB)
+            og_match = re.search(r'property="og:image"\s+content="([^"]+)"', res.text)
+            if og_match:
+                direct_url = og_match.group(1).replace("&amp;", "&")
+            
+            # Strategy B: Fallback regex for scontent CDN links
+            if not direct_url:
+                scontent_match = re.search(r'https://scontent[^"\\]+', res.text)
+                if scontent_match:
+                    direct_url = scontent_match.group(0).replace("\\/", "/").replace("&amp;", "&")
+
+            if direct_url:
+                print(f"Resolved FB Page to Direct CDN Image: {direct_url[:60]}...")
+                img_res = requests.get(direct_url, headers=headers, timeout=15)
+                return img_res.content, img_res.headers.get("Content-Type", "image/jpeg").split(";")[0]
+            else:
+                print(f"Could not resolve direct image URL from HTML page: {url}")
+                return None, None
+                
+        # If it's already a direct image URL (.jpg, .png, .webp)
+        return res.content, content_type.split(";")[0]
+
+    except Exception as e:
+        print(f"Failed to fetch image: {e}")
+        return None, None
 
 def parse_schedule_from_image(image_url, default_company):
-    """Extracts schedules from image bytes using Gemini 2.0 Flash."""
+    """Extracts schedules from flyer image using Gemini 2.0 Flash."""
     try:
-        img_bytes = get_direct_image_bytes(image_url)
+        img_bytes, mime_type = get_direct_image_payload(image_url)
         if not img_bytes:
             return None
+
+        # Standardize fallback mime-type
+        if not mime_type or "image" not in mime_type:
+            mime_type = "image/jpeg"
 
         prompt = f"""
         Analyze this ferry schedule flyer image.
 
         STRICT RULES:
-        1. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
-        2. "BALATERO TO BATANGAS" maps to "toBAT".
-        3. "BATANGAS TO BALATERO" maps to "toPG".
-        4. If a trip is marked "CANCELLED" or "SUSPENDED", set "status": "CANCELLED" and "note": "CANCELLED TODAY".
-        5. Default "type": "Fastcraft". Extract vessel name (e.g. PTERIPPUS 1) if available.
+        1. Extract the ferry operator/company name from the graphic header if present. Default to "{default_company}" if not specified.
+        2. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
+        3. "BALATERO TO BATANGAS" maps to "toBAT".
+        4. "BATANGAS TO BALATERO" maps to "toPG".
+        5. If a trip is marked "CANCELLED" or "SUSPENDED", set "status": "CANCELLED" and "note": "CANCELLED TODAY".
+        6. Default "type": "Fastcraft". Extract vessel name (e.g. PTERIPPUS 1, ISLAND WATER 1) if available.
 
         Return ONLY raw JSON in this structure:
         {{
           "toPG": [
-            {{"company": "{default_company}", "type": "Fastcraft", "vessel": "PTERIPPUS 1", "time": "12:45 PM", "status": "SCHEDULED", "note": ""}}
+            {{"company": "OPERATOR NAME", "type": "Fastcraft", "vessel": "VESSEL NAME", "time": "12:45 PM", "status": "SCHEDULED", "note": ""}}
           ],
           "toBAT": [
-            {{"company": "{default_company}", "type": "Fastcraft", "vessel": "PTERIPPUS 1", "time": "10:00 AM", "status": "SCHEDULED", "note": ""}}
+            {{"company": "OPERATOR NAME", "type": "Fastcraft", "vessel": "VESSEL NAME", "time": "10:00 AM", "status": "SCHEDULED", "note": ""}}
           ]
         }}
         """
@@ -57,7 +89,7 @@ def parse_schedule_from_image(image_url, default_company):
             model='gemini-2.0-flash',
             contents=[
                 prompt,
-                types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")
+                types.Part.from_bytes(data=img_bytes, mime_type=mime_type)
             ]
         )
 
@@ -65,7 +97,7 @@ def parse_schedule_from_image(image_url, default_company):
         if match:
             return json.loads(match.group(0))
         else:
-            print(f"Could not parse JSON response: {response.text}")
+            print(f"Could not parse JSON from Gemini response: {response.text}")
             return None
 
     except Exception as err:
@@ -73,6 +105,7 @@ def parse_schedule_from_image(image_url, default_company):
         return None
 
 def update_index_html(fresh_schedule):
+    """Rewrites index.html with the new extracted schedule."""
     with open("index.html", "r", encoding="utf-8") as f:
         html = f.read()
 
@@ -95,7 +128,7 @@ if __name__ == "__main__":
     target_url = payload_url or manual_url
 
     if target_url:
-        print(f"Processing flyer image: {target_url}")
+        print(f"Processing flyer image payload: {target_url}")
         data = parse_schedule_from_image(target_url, "Galerian Water Transport Services")
         if data:
             combined_schedule["toPG"].extend(data.get("toPG", []))
