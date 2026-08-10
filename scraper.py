@@ -7,17 +7,21 @@ import google.generativeai as genai
 # Configure Gemini AI using the repository secret
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
+# Direct Facebook Page URLs
 PAGES = [
-    {"company": "Galerian Water", "username": "galerianwatertransport"},
-    {"company": "Island Water", "username": "islandwaterph"}
+    {"company": "Galerian Water", "url": "https://www.facebook.com/profile.php?id=61556530050083"},
+    {"company": "Island Water", "url": "https://www.facebook.com/islandwater.ph"}
 ]
 
-def get_latest_post_image(username):
-    """Fetches the latest public image post URL from the target Facebook page."""
+def get_latest_post_image(page_url):
+    """Converts standard FB URL to mbasic and fetches the latest photo post URL."""
     try:
-        url = f"https://mbasic.facebook.com/{username}"
+        # Extracts username/ID from full URL and converts to mbasic Facebook format
+        clean_path = page_url.rstrip("/").split("/")[-1]
+        mbasic_url = f"https://mbasic.facebook.com/{clean_path}"
+        
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        res = requests.get(url, headers=headers, timeout=10)
+        res = requests.get(mbasic_url, headers=headers, timeout=10)
         
         # Search for photo links in page source
         match = re.search(r'href="([^"]*photo\.php[^"]*)"', res.text)
@@ -30,7 +34,7 @@ def get_latest_post_image(username):
             if img_match:
                 return img_match.group(1).replace("&amp;", "&")
     except Exception as e:
-        print(f"Could not fetch image for {username}: {e}")
+        print(f"Could not fetch image for {page_url}: {e}")
     return None
 
 def parse_schedule_from_image(image_url):
@@ -90,7 +94,7 @@ if __name__ == "__main__":
     combined_schedule = {"toPG": [], "toBAT": []}
 
     for page in PAGES:
-        image_url = get_latest_post_image(page["username"])
+        image_url = get_latest_post_image(page["url"])
         if image_url:
             data = parse_schedule_from_image(image_url)
             if data:
