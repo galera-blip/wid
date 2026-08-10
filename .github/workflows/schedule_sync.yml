@@ -1,17 +1,17 @@
 name: Daily Ferry Schedule Sync
 
 on:
-  schedule:
-    # Runs daily at 5:00 AM PHT (21:00 UTC)
-    - cron: '0 21 * * *'
+  # 1. Triggered instantly by Make.com webhook (Primary Flow)
+  repository_dispatch:
+    types: [fb_image_payload]
+
+  # 2. Triggered manually via GitHub UI when you want to paste a direct URL
   workflow_dispatch:
     inputs:
       image_url:
-        description: 'Direct FB Image URL (optional)'
+        description: 'Direct FB Image URL (Optional test input)'
         required: false
         type: string
-  repository_dispatch:
-    types: [fb_image_payload]
 
 jobs:
   update-schedule:
@@ -25,6 +25,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip' # Speeds up runs by caching installed Python packages
 
       - name: Install dependencies
         run: |
@@ -43,5 +44,5 @@ jobs:
           git config --global user.name 'Schedule Bot'
           git config --global user.email 'bot@galeraguide.com'
           git add index.html
-          git commit -m "Auto-synced daily schedules [skip ci]" || exit 0
+          git commit -m "Auto-synced ferry schedules [skip ci]" || exit 0
           git push
