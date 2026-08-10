@@ -7,8 +7,8 @@ import google.generativeai as genai
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 PAGES = [
-    {"company": "Galerian Water Transport Services", "url": "https://www.facebook.com/galerianwatertransport"},
-    {"company": "Island Water", "url": "https://www.facebook.com/islandwaterph"}
+    {"company": "Galerian Water Transport Services", "url": "https://www.facebook.com/profile.php?id=61556530050083"},
+    {"company": "Island Water", "url": "https://www.facebook.com/islandwater.ph"}
 ]
 
 def get_latest_post_image(page_url):
