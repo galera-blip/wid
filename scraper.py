@@ -5,33 +5,28 @@ import requests
 from google import genai
 from google.genai import types
 
-# Initialize official google-genai client
+# Initialize modern SDK client
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-PAGES = [
-    {"company": "Galerian Water Transport Services", "url": "https://www.facebook.com/profile.php?id=61556530050083"},
-    {"company": "Island Water", "url": "https://www.facebook.com/islandwater.ph"}
-]
-
 def get_direct_image_bytes(url):
-    """Downloads raw image bytes and resolves HTML photo pages if needed."""
+    """Downloads image bytes and handles FB photo page URLs if passed."""
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     res = requests.get(url, headers=headers, timeout=15)
     
-    # If the URL is a Facebook HTML photo page rather than a direct image link
+    # If a Facebook HTML photo webpage was passed instead of direct .jpg
     if "text/html" in res.headers.get("Content-Type", ""):
         match = re.search(r'src="([^"]*scontent[^"]*)"', res.text)
         if match:
             direct_url = match.group(1).replace("&amp;", "&")
             return requests.get(direct_url, headers=headers, timeout=15).content
         else:
-            print(f"Could not extract direct image URL from HTML page: {url}")
+            print(f"Could not resolve direct image from HTML URL: {url}")
             return None
             
     return res.content
 
 def parse_schedule_from_image(image_url, default_company):
-    """Sends flyer image to Gemini AI to extract schedules."""
+    """Extracts schedules from image bytes using Gemini 2.0 Flash."""
     try:
         img_bytes = get_direct_image_bytes(image_url)
         if not img_bytes:
@@ -41,17 +36,14 @@ def parse_schedule_from_image(image_url, default_company):
         Analyze this ferry schedule flyer image.
 
         STRICT RULES:
-        1. Look for the effective date on the flyer (e.g., "Schedule for August 11", "Tomorrow's Schedule", or "Effective Today").
-           - Set "effective_date": "YYYY-MM-DD" if a specific date is shown, or "TODAY" / "TOMORROW" based on text context.
-        2. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
-        3. "BALATERO TO BATANGAS" maps to "toBAT".
-        4. "BATANGAS TO BALATERO" maps to "toPG".
-        5. If a trip is marked "CANCELLED" or "SUSPENDED", set "status": "CANCELLED" and "note": "CANCELLED".
-        6. Default "type": "Fastcraft". Extract vessel name (e.g., PTERIPPUS 1) if available.
+        1. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
+        2. "BALATERO TO BATANGAS" maps to "toBAT".
+        3. "BATANGAS TO BALATERO" maps to "toPG".
+        4. If a trip is marked "CANCELLED" or "SUSPENDED", set "status": "CANCELLED" and "note": "CANCELLED TODAY".
+        5. Default "type": "Fastcraft". Extract vessel name (e.g. PTERIPPUS 1) if available.
 
         Return ONLY raw JSON in this structure:
         {{
-          "effective_date": "TODAY",
           "toPG": [
             {{"company": "{default_company}", "type": "Fastcraft", "vessel": "PTERIPPUS 1", "time": "12:45 PM", "status": "SCHEDULED", "note": ""}}
           ],
@@ -61,15 +53,11 @@ def parse_schedule_from_image(image_url, default_company):
         }}
         """
 
-        # Updated to active model string & modern google-genai SDK
         response = client.models.generate_content(
             model='gemini-2.0-flash',
             contents=[
                 prompt,
-                types.Part.from_bytes(
-                    data=img_bytes,
-                    mime_type="image/jpeg"
-                )
+                types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")
             ]
         )
 
@@ -77,7 +65,7 @@ def parse_schedule_from_image(image_url, default_company):
         if match:
             return json.loads(match.group(0))
         else:
-            print(f"Could not extract JSON from response: {response.text}")
+            print(f"Could not parse JSON response: {response.text}")
             return None
 
     except Exception as err:
@@ -85,7 +73,6 @@ def parse_schedule_from_image(image_url, default_company):
         return None
 
 def update_index_html(fresh_schedule):
-    """Rewrites index.html with the new extracted schedule."""
     with open("index.html", "r", encoding="utf-8") as f:
         html = f.read()
 
@@ -108,7 +95,7 @@ if __name__ == "__main__":
     target_url = payload_url or manual_url
 
     if target_url:
-        print(f"Processing incoming flyer image: {target_url}")
+        print(f"Processing flyer image: {target_url}")
         data = parse_schedule_from_image(target_url, "Galerian Water Transport Services")
         if data:
             combined_schedule["toPG"].extend(data.get("toPG", []))
