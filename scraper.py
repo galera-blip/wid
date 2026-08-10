@@ -34,7 +34,9 @@ def parse_schedule_from_image(image_url, default_company):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         img_data = requests.get(image_url, headers=headers, timeout=15).content
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Upgraded to Gemini 2.5 Flash for faster & more accurate visual extraction
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         prompt = f"""
         Analyze this ferry schedule flyer image.
@@ -62,8 +64,14 @@ def parse_schedule_from_image(image_url, default_company):
             {"mime_type": "image/jpeg", "data": img_data}
         ])
         
-        clean_text = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_text)
+        # Resilient JSON Extraction
+        match = re.search(r'\{[\s\S]*\}', response.text)
+        if match:
+            return json.loads(match.group(0))
+        else:
+            print(f"Could not extract JSON from response: {response.text}")
+            return None
+
     except Exception as err:
         print(f"Error parsing image with Gemini AI: {err}")
         return None
@@ -87,10 +95,10 @@ def update_index_html(fresh_schedule):
 if __name__ == "__main__":
     combined_schedule = {"toPG": [], "toBAT": []}
 
-    # Check for direct image URLs passed via Zapier or Manual Workflow Input
-    zapier_url = os.environ.get("PAYLOAD_IMAGE_URL", "").strip()
+    # Check for direct image URLs passed via Make.com or Manual Workflow Input
+    payload_url = os.environ.get("PAYLOAD_IMAGE_URL", "").strip()
     manual_url = os.environ.get("INPUT_IMAGE_URL", "").strip()
-    target_url = zapier_url or manual_url
+    target_url = payload_url or manual_url
 
     if target_url:
         print(f"Processing incoming flyer image: {target_url}")
