@@ -28,13 +28,21 @@ jobs:
           INPUT_IMAGE_URL: ${{ inputs.image_url }}
         run: |
           URL="${PAYLOAD_IMAGE_URL:-$INPUT_IMAGE_URL}"
-          curl -L -A "Mozilla/5.0" -o /tmp/ferry.jpg "$URL"
-          gemini --model gemini-2.5-flash --yolo --skip-trust -p "Extract BATANGAS to BALATERO and BALATERO to BATANGAS ferry schedule from @/tmp/ferry.jpg . Return ONLY valid JSON like {\"toPG\":[{\"company\":\"Montenegro\",\"time\":\"7:30 AM\"}],\"toBAT\":[{\"company\":\"Montenegro\",\"time\":\"8:30 AM\"}]}. No markdown." > /tmp/out.txt
-          cat /tmp/out.txt
+          curl -L -A "Mozilla/5.0" -o ./ferry.jpg "$URL"
+          ls -lh ./ferry.jpg
+          
+          # Use lite model = 100x more free quota than 2.5-flash
+          gemini --model gemini-2.5-flash-lite --yolo --skip-trust -p "Extract BATANGAS to BALATERO and BALATERO to BATANGAS ferry schedule from @./ferry.jpg . Return ONLY valid JSON like {\"toPG\":[{\"company\":\"Montenegro\",\"time\":\"7:30 AM\"}],\"toBAT\":[{\"company\":\"Montenegro\",\"time\":\"8:30 AM\"}]}. No markdown." > ./out.txt
+          cat ./out.txt
+          
           python3 -c "
-          import re, json
-          txt=open('/tmp/out.txt').read()
+          import re, json, sys
+          txt=open('./out.txt').read()
+          print(txt)
           m=re.search(r'\{[\s\S]*\}', txt)
+          if not m:
+            print('No JSON found, keeping old file')
+            sys.exit(0)
           data=json.loads(m.group(0))
           html=open('index.html','r',encoding='utf-8').read()
           s=html.index('const schedule = {')
@@ -42,6 +50,7 @@ jobs:
           open('index.html','w',encoding='utf-8').write(html[:s]+f'const schedule = {json.dumps(data,indent=2)};\n\n  let currentDir'+html[e+12:])
           print('DONE')
           "
+          rm -f ./ferry.jpg ./out.txt
       - name: Push
         run: |
           git config user.name 'bot'
