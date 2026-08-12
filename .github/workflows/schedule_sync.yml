@@ -23,16 +23,68 @@ jobs:
       - name: Scrape with Interactions API
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PAYLOAD_RAW: ${{ toJson(github.event.client_payload) }}
           PAYLOAD_IMAGE_URL: ${{ github.event.client_payload.image_url }}
           INPUT_IMAGE_URL: ${{ inputs.image_url }}
+          PAYLOAD_ACTION: ${{ github.event.client_payload.action }}
+          PAYLOAD_COMPANY: ${{ github.event.client_payload.company }}
+          PAYLOAD_TIME: ${{ github.event.client_payload.time }}
+          PAYLOAD_DIRECTION: ${{ github.event.client_payload.direction }}
+          PAYLOAD_NOTE: ${{ github.event.client_payload.note }}
         run: |
           python3 << 'PY'
           import os, re, json, base64, requests
           from google import genai
 
-          url = (os.environ.get("PAYLOAD_IMAGE_URL") or os.environ.get("INPUT_IMAGE_URL") or "").strip()
-          print(f"URL: {url}")
+          def load_schedule_from_html(html):
+              m = re.search(r'const schedule = (\{[\s\S]*?\});', html)
+              if not m:
+                  return None
+              return json.loads(m.group(1))
 
+          # --- BRANCH B: CANCEL FROM FACEBOOK POST ---
+          action = (os.environ.get("PAYLOAD_ACTION") or "").strip().lower()
+          if action == "cancel":
+              company = (os.environ.get("PAYLOAD_COMPANY") or "").strip()
+              time_str = (os.environ.get("PAYLOAD_TIME") or "").strip()
+              direction = (os.environ.get("PAYLOAD_DIRECTION") or "both").strip()
+              note = (os.environ.get("PAYLOAD_NOTE") or "CANCELLED TODAY").strip()
+
+              print(f"CANCEL MODE: {company} {time_str} dir={direction} note={note}")
+
+              html = open('index.html', 'r', encoding='utf-8').read()
+              data = load_schedule_from_html(html)
+              if not data:
+                  print("Could not parse schedule")
+                  raise SystemExit(1)
+
+              targets = [direction] if direction in ["toPG","toBAT"] else ["toPG","toBAT"]
+              updated = 0
+              for dir_key in targets:
+                  for trip in data.get(dir_key, []):
+                      # match by time (exact) and company contains
+                      if trip.get("time","").strip() == time_str and company.lower() in trip.get("company","").lower():
+                          trip["note"] = note
+                          updated += 1
+                          print(f" -> Added note to {dir_key} {trip}")
+
+              if updated == 0:
+                  print("No matching trip found - adding note to closest time match anyway")
+                  # fallback: just add if time matches any company
+                  for dir_key in targets:
+                      for trip in data.get(dir_key, []):
+                          if trip.get("time","").strip() == time_str:
+                              trip["note"] = note
+                              updated += 1
+
+              new_html = re.sub(r'const schedule = \{[\s\S]*?\};', f'const schedule = {json.dumps(data, indent=2)};', html)
+              open('index.html', 'w', encoding='utf-8').write(new_html)
+              print(f"Done - {updated} trip(s) marked CANCELLED, lineup kept")
+              raise SystemExit(0)
+
+          # --- BRANCH A: YOUR WORKING FLYER IMAGE CODE ---
+          url = (os.environ.get("PAYLOAD_IMAGE_URL") or os.environ.get("INPUT_IMAGE_URL") or "").strip()
+          print(f"IMAGE MODE URL: {url}")
           if not url:
               print("No image URL provided. Exiting without changes.")
               raise SystemExit(0)
@@ -45,7 +97,6 @@ jobs:
           res = requests.get(url, headers=headers, timeout=15)
           content_type = res.headers.get("Content-Type", "").lower()
 
-          # If the URL is an FB HTML permalink (not a direct image), resolve the real image URL
           if "text/html" in content_type:
               direct_url = None
               og_match = re.search(r'property="og:image"\s+content="([^"]+)"', res.text)
@@ -70,86 +121,58 @@ jobs:
               mime_type = "image/jpeg"
 
           b64 = base64.b64encode(img_bytes).decode('utf-8')
-
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
           prompt = """
-          Analyze ferry schedule image.
+          Analyze this ferry schedule flyer image.
 
-          1. Extract ALL trips for Batangas <-> Balatero, even if marked CANCELLED.
-          2. NEVER delete cancelled trips - keep them.
-          3. If trip says CANCELLED/SUSPENDED: set "status":"CANCELLED" and "note":"CANCELLED TODAY"
-          4. company: header or "Galerian Water Transport Services"
-          5. vessel: short name like "PTERIPPUS 1" max 15 chars, "" if unsure
-          6. type: Fastcraft or RoRo
-          7. toPG = Batangas to Balatero, toBAT = Balatero to Batangas
+          STRICT RULES:
+          1. Extract the ferry operator/company name from the graphic header if present. Default to "Galerian Water Transport Services" if not specified.
+          2. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
+          3. "BALATERO TO BATANGAS" maps to "toBAT".
+          4. "BATANGAS TO BALATERO" maps to "toPG".
+          5. If a trip is marked "CANCELLED" or "SUSPENDED", keep the trip but set "note": "CANCELLED TODAY".
+          6. Default "type": "Fastcraft". Vessel name max 15 chars like "PTERIPPUS 1" or "" if unsure. No sentences.
           """
 
           schema = {
               "type": "object",
               "properties": {
-                  "toPG": {
-                      "type": "array",
-                      "items": {
-                          "type": "object",
-                          "properties": {
-                              "company": {"type": "string"},
-                              "type": {"type": "string"},
-                              "vessel": {"type": "string"},
-                              "time": {"type": "string"},
-                              "status": {"type": "string"},
-                              "note": {"type": "string"}
-                          },
-                          "required": ["company", "time"]
-                      }
-                  },
-                  "toBAT": {
-                      "type": "array",
-                      "items": {
-                          "type": "object",
-                          "properties": {
-                              "company": {"type": "string"},
-                              "type": {"type": "string"},
-                              "vessel": {"type": "string"},
-                              "time": {"type": "string"},
-                              "status": {"type": "string"},
-                              "note": {"type": "string"}
-                          },
-                          "required": ["company", "time"]
-                      }
-                  }
+                  "toPG": {"type": "array","items": {"type": "object","properties": {"company": {"type": "string"},"type": {"type": "string"},"vessel": {"type": "string"},"time": {"type": "string"},"status": {"type": "string"},"note": {"type": "string"}},"required": ["company", "time"]}},
+                  "toBAT": {"type": "array","items": {"type": "object","properties": {"company": {"type": "string"},"type": {"type": "string"},"vessel": {"type": "string"},"time": {"type": "string"},"status": {"type": "string"},"note": {"type": "string"}},"required": ["company", "time"]}}
               },
               "required": ["toPG", "toBAT"]
           }
 
           interaction = client.interactions.create(
               model="gemini-3.6-flash",
-              input=[
-                  {"type": "text", "text": prompt},
-                  {"type": "image", "data": b64, "mime_type": mime_type}
-              ],
-              response_format={
-                  "type": "text",
-                  "mime_type": "application/json",
-                  "schema": schema
-              }
+              input=[{"type": "text", "text": prompt},{"type": "image", "data": b64, "mime_type": mime_type}],
+              response_format={"type": "text","mime_type": "application/json","schema": schema}
           )
 
           txt = interaction.output_text
           print(f"RAW: {txt}")
           data = json.loads(txt)
-          print(f"PARSED: {data}")
 
+          # clean vessel leak
+          def clean_v(v):
+              if not v: return ""
+              v = str(v)
+              if "->" in v or len(v) > 20:
+                  m2 = re.search(r'(PTERIPPUS\s*\d*|ISLAND\s*WATER\s*\d*|ISLAND\s*SIMARA\s*\d*|MONTENEGRO\s*\d*)', v, re.I)
+                  return (m2.group(1).upper() if m2 else v.split()[0])[:20]
+              return v[:20]
+          for k in ["toPG","toBAT"]:
+              for trip in data.get(k,[]):
+                  trip["vessel"] = clean_v(trip.get("vessel",""))
+
+          print(f"PARSED CLEANED: {data}")
           if not data.get("toPG") and not data.get("toBAT"):
               print("No relevant schedule data extracted. Exiting without changes.")
               raise SystemExit(0)
 
           html = open('index.html', 'r', encoding='utf-8').read()
-          updated_html = re.sub(
-              r'const schedule = \{[\s\S]*?\};',
-              f'const schedule = {json.dumps(data, indent=2)};',
-              html
-          )
+          updated_html = re.sub(r'const schedule = \{[\s\S]*?\};', f'const schedule = {json.dumps(data, indent=2)};', html)
           open('index.html', 'w', encoding='utf-8').write(updated_html)
           print("index.html successfully updated with live schedules!")
           PY
