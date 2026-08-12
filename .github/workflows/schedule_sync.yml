@@ -74,15 +74,15 @@ jobs:
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
           prompt = """
-          Analyze this ferry schedule flyer image.
+          Analyze ferry schedule image.
 
-          STRICT RULES:
-          1. Extract the ferry operator/company name from the graphic header if present. Default to "Galerian Water Transport Services" if not specified.
-          2. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
-          3. "BALATERO TO BATANGAS" maps to "toBAT".
-          4. "BATANGAS TO BALATERO" maps to "toPG".
-          5. If a trip is marked "CANCELLED" or "SUSPENDED", set "status": "CANCELLED" and "note": "CANCELLED TODAY".
-          6. Default "type": "Fastcraft". Extract vessel name (e.g. PTERIPPUS 1, ISLAND WATER 1) if available.
+          1. Extract ALL trips for Batangas <-> Balatero, even if marked CANCELLED.
+          2. NEVER delete cancelled trips - keep them.
+          3. If trip says CANCELLED/SUSPENDED: set "status":"CANCELLED" and "note":"CANCELLED TODAY"
+          4. company: header or "Galerian Water Transport Services"
+          5. vessel: short name like "PTERIPPUS 1" max 15 chars, "" if unsure
+          6. type: Fastcraft or RoRo
+          7. toPG = Batangas to Balatero, toBAT = Balatero to Batangas
           """
 
           schema = {
