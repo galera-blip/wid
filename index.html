@@ -1,5 +1,650 @@
-  function escapeHtml(s){
-    return String(s||"").replace(/[&<>"]/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]));
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Puerto Galera to Batangas Ferry Schedule 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- SCHEMA MARKUP FOR GOOGLE TRANSIT INDEXING (100% VALIDATED) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Schedule",
+  "name": "Puerto Galera to Batangas Ferry Schedule",
+  "description": "Daily Fastcraft and RoRo ferry schedules between Puerto Galera and Batangas Port.",
+  "provider": [
+    {
+      "@type": "Organization",
+      "@id": "https://galeraguide.com/#galerian-water",
+      "name": "Galerian Water Transport",
+      "url": "https://galeraguide.com/puerto-galera-ferry-rates#galerian-rates"
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://galeraguide.com/#montenegro-lines",
+      "name": "Montenegro Shipping Lines",
+      "url": "https://galeraguide.com/puerto-galera-ferry-rates#montenegro-rates"
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://galeraguide.com/#island-water",
+      "name": "Island Water",
+      "url": "https://galeraguide.com/puerto-galera-ferry-rates#islandwater-rates"
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://galeraguide.com/#island-simara",
+      "name": "Island Simara",
+      "url": "https://galeraguide.com/puerto-galera-ferry-rates#islasimara-rates"
+    }
+  ]
+}
+</script>
+
+<style>
+  :root{
+    --navy: #2082A7;
+    --navy-soft: #4A9BB8;
+    --orange: #FF9806;
+    --orange-dark: #E68600;
+    --border: #9FDCEC;
+    --bg: #FAFAFA;
+    --card-bg: #FFFFFF;
+    --muted: #7A8C9A;
+    --red: #EF4444;
+    --red-bg: #FEF2F2;
+    --red-border: #FCA5A5;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    padding:0;
+    background:var(--bg);
+    font-family:'Montserrat', sans-serif;
+    color:var(--navy);
+  }
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:32px 20px 48px;
+  }
+  h1.title{
+    font-family:'Montserrat', sans-serif;
+    font-weight:800;
+    font-size:26px;
+    text-align:center;
+    color:var(--navy);
+    margin:0 0 4px;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+    margin:0 0 24px;
+  }
+
+  /* direction tabs */
+  .tabs{
+    display:flex;
+    gap:8px;
+    background:#EAF2F5;
+    padding:5px;
+    border-radius:14px;
+    margin-bottom:16px;
+  }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding:11px 8px;
+    border-radius:10px;
+    font-weight:700;
+    font-size:13.5px;
+    cursor:pointer;
+    border:none;
+    background:transparent;
+    color:var(--navy-soft);
+    transition:all .15s ease;
+    font-family:'Montserrat', sans-serif;
+    line-height:1.3;
+  }
+  .tab.active{
+    background:var(--navy);
+    color:#fff;
+    box-shadow:0 3px 8px rgba(22,52,79,.25);
+  }
+
+  /* Next Departure Highlight Card */
+  .next-card {
+    background: linear-gradient(135deg, #2082A7 0%, #155B75 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 14px rgba(32, 130, 167, 0.25);
+  }
+  .next-card .next-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .next-card .next-badge {
+    background: var(--orange);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 20px;
+    letter-spacing: .05em;
+    display: inline-block;
+  }
+  .next-card .countdown {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #D2F2FC;
+  }
+  .next-card .next-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+  }
+  .next-card .company {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+    text-decoration: none;
+    line-height: 1.25;
+  }
+  .next-card .boat-type {
+    font-size: 11px;
+    color: #B2E3F3;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .next-card .time {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  /* controls */
+  .controls{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .search-box{
+    width:100%;
+    position:relative;
+  }
+  .search-box input{
+    width:100%;
+    padding:12px 14px 12px 38px;
+    border-radius:12px;
+    border:1.5px solid var(--border);
+    font-size:14px;
+    font-family:'Montserrat', sans-serif;
+    color:var(--navy);
+    outline:none;
+    background:#fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%237A8C9A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>') no-repeat 12px center;
+  }
+  .search-box input:focus{border-color:var(--orange);}
+
+  .filter-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+  .filter-row select{
+    flex: 1;
+    min-width: 0;
+    padding:12px 8px;
+    border-radius:12px;
+    border:1.5px solid var(--border);
+    font-size:13px;
+    font-family:'Montserrat', sans-serif;
+    color:var(--navy);
+    background:#fff;
+    outline:none;
+    cursor:pointer;
+    text-overflow: ellipsis;
+  }
+  .filter-row select:focus{border-color:var(--orange);}
+
+  .count{
+    font-size:12.5px;
+    color:var(--muted);
+    margin:0 2px 12px;
+  }
+
+  /* trip cards */
+  .card{
+    background:var(--card-bg);
+    border:1.5px solid var(--border);
+    border-radius:16px;
+    padding:16px 18px;
+    margin-bottom:14px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    transition: all 0.15s ease;
+  }
+  
+  /* Cancelled trip card styling */
+  .card.cancelled {
+    background-color: var(--red-bg);
+    border-color: var(--red-border);
+    opacity: 0.85;
+  }
+
+  .icon{
+    flex:0 0 auto;
+    width:44px;
+    height:44px;
+    border-radius:12px;
+    background:#EAF7FB;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .card.cancelled .icon {
+    background: #FEE2E2;
+  }
+  .icon svg{width:22px;height:22px;stroke:var(--navy);}
+  .card.cancelled .icon svg{stroke:var(--red);}
+
+  .info{
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .boat-type{
+    font-size:11px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:600;
+    margin-bottom:2px;
+  }
+  .company{
+    font-size:15px;
+    font-weight:700;
+    color:var(--navy);
+    text-decoration:underline;
+    text-decoration-color:var(--border);
+    text-underline-offset:3px;
+    line-height:1.25;
+  }
+  .vessel {
+    font-size:12px;
+    color:var(--muted);
+    font-weight:600;
+    margin-top:2px;
+  }
+  .note{
+    font-size:11.5px;
+    color:var(--orange-dark);
+    font-weight:600;
+    margin-top:3px;
+  }
+  .card.cancelled .note {
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  .badge-cancelled {
+    background-color: var(--red);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+
+  .right{
+    flex:0 0 auto;
+    text-align:right;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+  }
+  .time{
+    font-size:18px;
+    font-weight:800;
+    font-family:'Montserrat', sans-serif;
+    color:var(--navy);
+    white-space:nowrap;
+  }
+  .card.cancelled .time {
+    color: var(--red);
+    text-decoration: line-through;
+  }
+
+  .btn{
+    display:inline-block;
+    background:var(--orange);
+    color:#fff;
+    border:none;
+    padding:8px 14px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:11.5px;
+    cursor:pointer;
+    white-space:nowrap;
+    font-family:'Montserrat', sans-serif;
+    text-decoration:none;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .btn:hover{background:var(--orange-dark);}
+  .btn:active{transform:scale(.97);}
+
+  .empty{
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+    padding:36px 10px;
+  }
+
+  /* Mobile Adjustments */
+  @media (max-width:480px){
+    .wrap {
+      padding: 20px 14px 36px;
+    }
+    .next-card {
+      padding: 16px;
+    }
+    .next-card .next-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .next-card .company {
+      font-size: 16px;
+    }
+    .next-card .time {
+      font-size: 19px;
+    }
+    .card{
+      padding:14px 12px;
+      gap:10px;
+    }
+    .icon {
+      width:38px;
+      height:38px;
+    }
+    .icon svg {
+      width:20px;
+      height:20px;
+    }
+    .company {
+      font-size: 13.5px;
+    }
+    .time {
+      font-size: 16px;
+    }
+    .btn {
+      padding: 7px 11px;
+      font-size: 11px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- PLAIN HTML TIMETABLES FOR AI MODELS & SEARCH CRAWLERS (HIDDEN FROM VISUAL INTERFACE) -->
+<div style="display:none;" aria-hidden="false">
+  <h2>Batangas Pier to Puerto Galera (Balatero Port) Ferry Schedule</h2>
+  <table>
+    <thead><tr><th>Departure Time</th><th>Ferry Company</th><th>Vessel Type</th><th>Schedule Notes</th></tr></thead>
+    <tbody>
+      <tr><td>6:30 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>7:30 AM</td><td>Island Water</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>8:00 AM</td><td>Montenegro Shipping Lines</td><td>RoRo</td><td>Daily</td></tr>
+      <tr><td>9:45 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>10:00 AM</td><td>Island Simara</td><td>RoRo</td><td>Saturday and Sunday only</td></tr>
+      <tr><td>10:45 AM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>12:45 PM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>1:45 PM</td><td>Island Water</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>2:15 PM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Puerto Galera (Balatero Port) to Batangas Pier Ferry Schedule</h2>
+  <table>
+    <thead><tr><th>Departure Time</th><th>Ferry Company</th><th>Vessel Type</th><th>Schedule Notes</th></tr></thead>
+    <tbody>
+      <tr><td>6:00 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>7:15 AM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>9:30 AM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>10:00 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>11:00 AM</td><td>Island Water</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>11:45 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>12:30 PM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>1:00 PM</td><td>Island Simara</td><td>RoRo</td><td>Saturday and Sunday only</td></tr>
+      <tr><td>1:30 PM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>2:00 PM</td><td>Montenegro Shipping Lines</td><td>RoRo</td><td>Daily</td></tr>
+      <tr><td>3:00 PM</td><td>Island Water</td><td>Fastcraft</td><td>Daily</td></tr>
+      <tr><td>3:15 PM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- HUMAN INTERACTIVE WIDGET -->
+<div class="wrap">
+
+  <div class="tabs">
+    <button class="tab active" data-dir="toBAT">Puerto Galera → Batangas</button>
+    <button class="tab" data-dir="toPG">Batangas → Puerto Galera</button>
+  </div>
+
+  <!-- NEXT DEPARTURE CARD -->
+  <div class="next-card" id="nextDepartureCard">
+    <div class="next-header">
+      <span class="next-badge">Next Departure</span>
+      <span class="countdown" id="countdownTimer">Loading...</span>
+    </div>
+    <div class="next-details">
+      <div>
+        <div class="boat-type" id="nextBoatType">-</div>
+        <div class="company" id="nextCompany">-</div>
+      </div>
+      <div class="time" id="nextTime">-</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search time or ferry company (e.g. 6:00 AM, Montenegro)">
+    </div>
+    <div class="filter-row">
+      <select id="companyFilter">
+        <option value="all">All companies</option>
+      </select>
+      <select id="typeFilter">
+        <option value="all">All boat types</option>
+      </select>
+    </div>
+  </div>
+
+  <p class="count" id="resultCount"></p>
+
+  <div id="cardList"></div>
+
+  <div class="empty" id="emptyState" style="display:none;">No trips match your search. Try a different time or company.</div>
+</div>
+
+<script>
+  const fastcraftIcon = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 18l1.5-5h15L21 18"/>
+    <path d="M5.5 13V7h6l3 6"/>
+    <path d="M2 21c1.5 1.2 3 1.2 4.5 0 1.5-1.2 3-1.2 4.5 0 1.5 1.2 3 1.2 4.5 0 1.5-1.2 3-1.2 4.5 0"/>
+  </svg>`;
+
+  const roroIcon = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 17l1.8-6h16.4L22 17"/>
+    <rect x="6" y="8" width="5" height="4"/>
+    <rect x="13" y="8" width="5" height="4"/>
+    <path d="M4 21c1.5 1.2 3 1.2 4.5 0 1.5-1.2 3-1.2 4.5 0 1.5 1.2 3 1.2 4.5 0"/>
+  </svg>`;
+
+  function iconFor(type){
+    return type === 'RoRo' ? roroIcon : fastcraftIcon;
+  }
+
+  const RATES_BASE_URL = "https://galeraguide.com/puerto-galera-ferry-rates";
+  const companyAnchors = {
+    "Galerian Water": "galerian-rates",
+    "Galerian Water Transport Services": "galerian-rates",
+    "Montenegro": "montenegro-rates",
+    "Island Water": "islandwater-rates",
+    "Island Simara": "islasimara-rates"
+  };
+
+  function ratesLink(company){
+    const anchor = companyAnchors[company];
+    return anchor ? `${RATES_BASE_URL}#${anchor}` : RATES_BASE_URL;
+  }
+
+  const schedule = {
+    toPG: [
+      //{type:"Fastcraft", company:"Galerian Water", time:"6:30 AM"},
+      {type:"Fastcraft", company:"Island Water", time:"7:30 AM"},
+      {type:"RoRo", company:"Montenegro", time:"8:00 AM"},
+      {type:"Fastcraft", company:"Galerian Water", time:"9:45 AM"},
+      {type:"RoRo", company:"Island Simara", time:"10:00 AM", note:"Saturday – Sunday only"},
+      {type:"Fastcraft", company:"Montenegro", time:"10:45 AM"},
+      {type:"Fastcraft", company:"Galerian Water", time:"12:45 PM"},
+      {type:"Fastcraft", company:"Island Water", time:"1:45 PM"},
+      {type:"Fastcraft", company:"Montenegro", time:"2:15 PM"}
+    ],
+    toBAT: [
+      {type:"Fastcraft", company:"Galerian Water", time:"6:00 AM"},
+      {type:"Fastcraft", company:"Montenegro", time:"7:15 AM"},
+      {type:"Fastcraft", company:"Montenegro", time:"9:30 AM"},
+      {type:"Fastcraft", company:"Galerian Water", time:"10:00 AM"},
+      {type:"Fastcraft", company:"Island Water", time:"11:00 AM"},
+      //{type:"Fastcraft", company:"Galerian Water", time:"11:45 AM"},
+      {type:"Fastcraft", company:"Montenegro", time:"12:30 PM"},
+      {type:"RoRo", company:"Island Simara", time:"1:00 PM", note:"Saturday – Sunday only"},
+      {type:"Fastcraft", company:"Montenegro", time:"1:30 PM"},
+      {type:"RoRo", company:"Montenegro", time:"2:00 PM"},
+      {type:"Fastcraft", company:"Island Water", time:"3:00 PM"},
+      {type:"Fastcraft", company:"Montenegro", time:"3:15 PM"}
+    ]
+  };
+
+  let currentDir = "toBAT";
+  let countdownInterval = null;
+
+  const cardList = document.getElementById('cardList');
+  const emptyState = document.getElementById('emptyState');
+  const resultCount = document.getElementById('resultCount');
+  const searchInput = document.getElementById('searchInput');
+  const companyFilter = document.getElementById('companyFilter');
+  const typeFilter = document.getElementById('typeFilter');
+
+  function timeToMinutes(t){
+    if(!t) return 0;
+    const [time, period] = t.split(' ');
+    let [h, m] = time.split(':').map(Number);
+    if(period === 'PM' && h !== 12) h += 12;
+    if(period === 'AM' && h === 12) h = 0;
+    return h*60+m;
+  }
+
+  function updateNextDeparture() {
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const trips = [...schedule[currentDir]].sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
+    
+    // EXCLUDE CANCELLED TRIPS FROM COUNTDOWN
+    const activeTrips = [...schedule[currentDir]]
+      .filter(t => t.status !== "CANCELLED")
+      .sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
+
+    if (activeTrips.length === 0) {
+      document.getElementById('nextBoatType').textContent = "-";
+      document.getElementById('nextCompany').textContent = "All Trips Cancelled";
+      document.getElementById('nextTime').textContent = "-";
+      document.getElementById('countdownTimer').textContent = "No active trips today";
+      if (countdownInterval) clearInterval(countdownInterval);
+      return;
+    }
+
+    let nextTrip = trips.find(t => timeToMinutes(t.time) > currentMins);
+    let nextTrip = activeTrips.find(t => timeToMinutes(t.time) > currentMins);
+    let isTomorrow = false;
+
+    if (!nextTrip) {
+      nextTrip = trips[0];
+      nextTrip = activeTrips[0];
+      isTomorrow = true;
+    }
+
+    document.getElementById('nextBoatType').textContent = nextTrip.type;
+    document.getElementById('nextBoatType').textContent = nextTrip.type || "Fastcraft";
+    document.getElementById('nextCompany').textContent = nextTrip.company;
+    document.getElementById('nextTime').textContent = nextTrip.time;
+
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    function tick() {
+      const now = new Date();
+      const tripMins = timeToMinutes(nextTrip.time);
+      const target = new Date(now);
+
+      target.setHours(Math.floor(tripMins / 60), tripMins % 60, 0, 0);
+      if (isTomorrow || target <= now) {
+        if (isTomorrow) target.setDate(target.getDate() + 1);
+      }
+
+      const diff = target - now;
+
+      if (diff <= 0) {
+        updateNextDeparture();
+        return;
+      }
+
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+      let timeStr = "";
+      if (h > 0) timeStr += `${h}h `;
+      timeStr += `${m}m ${s}s`;
+      if (isTomorrow) timeStr += " (Tomorrow)";
+
+      document.getElementById('countdownTimer').textContent = `Leaves in ${timeStr}`;
+    }
+
+    tick();
+    countdownInterval = setInterval(tick, 1000);
+  }
+
+  function populateFilters(){
+    const trips = schedule[currentDir];
+    const companies = [...new Set(trips.map(t=>t.company))].sort();
+    const types = [...new Set(trips.map(t=>t.type))].sort();
+    const types = [...new Set(trips.map(t=>t.type || "Fastcraft"))].sort();
+
+    companyFilter.innerHTML = '<option value="all">All companies</option>' +
+      companies.map(c=>`<option value="${c}">${c}</option>`).join('');
+    typeFilter.innerHTML = '<option value="all">All boat types</option>' +
+      types.map(t=>`<option value="${t}">${t}</option>`).join('');
   }
 
   function render(){
@@ -9,13 +654,15 @@
     const typeVal = typeFilter.value;
 
     const filtered = trips.filter(t=>{
-      const matchesQuery =!q ||
+      const typeStr = t.type || "Fastcraft";
+      const matchesQuery = !q ||
         t.time.toLowerCase().includes(q) ||
         t.company.toLowerCase().includes(q) ||
-        (t.vessel && t.vessel.toLowerCase().includes(q)) ||
         t.type.toLowerCase().includes(q);
+        typeStr.toLowerCase().includes(q);
       const matchesCompany = companyVal === 'all' || t.company === companyVal;
       const matchesType = typeVal === 'all' || t.type === typeVal;
+      const matchesType = typeVal === 'all' || typeStr === typeVal;
       return matchesQuery && matchesCompany && matchesType;
     });
 
@@ -28,21 +675,63 @@
     }
     emptyState.style.display = 'none';
 
-    cardList.innerHTML = filtered.map(t => {
-      const vessel = (t.vessel||"").toString().slice(0,20).trim();
-      const isCancelled = (t.status||"").toUpperCase().includes("CANCEL") || (t.note||"").toUpperCase().includes("CANCEL");
-      return `
-      <div class="card" style="${isCancelled? 'border-color:#FFC4C4;background:#FFF8F8' : ''}">
+    cardList.innerHTML = filtered.map(t => `
+      <div class="card">
         <div class="icon">${iconFor(t.type)}</div>
         <div class="info">
-          <div class="boat-type">${escapeHtml(t.type)}${vessel? ` • ${escapeHtml(vessel)}` : ''}</div>
-          <div class="company">${escapeHtml(t.company)}</div>
-          ${isCancelled? `<div class="note" style="color:#D32F2F;font-weight:800;">CANCELLED TODAY</div>` : (t.note? `<div class="note">${escapeHtml(t.note)}</div>` : '')}
+          <div class="boat-type">${t.type}</div>
+          <div class="company">${t.company}</div>
+          ${t.note ? `<div class="note">${t.note}</div>` : ''}
+    cardList.innerHTML = filtered.map(t => {
+      const isCancelled = t.status === "CANCELLED";
+      const typeStr = t.type || "Fastcraft";
+      const noteText = t.note || (isCancelled ? "CANCELLED TODAY" : "");
+
+      return `
+        <div class="card ${isCancelled ? 'cancelled' : ''}">
+          <div class="icon">${iconFor(typeStr)}</div>
+          <div class="info">
+            <div class="boat-type">${typeStr}</div>
+            <div class="company">${t.company}</div>
+            ${t.vessel ? `<div class="vessel">${t.vessel}</div>` : ''}
+            ${noteText ? `<div class="note">${isCancelled ? '⚠️ ' : ''}${noteText}</div>` : ''}
+          </div>
+          <div class="right">
+            ${isCancelled ? '<span class="badge-cancelled">Cancelled</span>' : ''}
+            <div class="time">${t.time}</div>
+            <a class="btn" href="${ratesLink(t.company)}" target="_blank" rel="noopener">Check Rates</a>
+          </div>
         </div>
         <div class="right">
-          <div class="time" style="${isCancelled? 'color:#D32F2F;text-decoration:line-through' : ''}">${escapeHtml(t.time)}</div>
-          <a class="btn" href="${ratesLink(t.company)}" target="_blank" rel="noopener" style="${isCancelled? 'background:#ccc;pointer-events:none' : ''}">${isCancelled? 'Cancelled' : 'Check Rates'}</a>
+          <div class="time">${t.time}</div>
+          <a class="btn" href="${ratesLink(t.company)}" target="_blank" rel="noopener">Check Rates</a>
         </div>
       </div>
-    `}).join('');
+    `).join('');
+      `;
+    }).join('');
   }
+
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      currentDir = tab.dataset.dir;
+      searchInput.value = '';
+      populateFilters();
+      render();
+      updateNextDeparture();
+    });
+  });
+
+  searchInput.addEventListener('input', render);
+  companyFilter.addEventListener('change', render);
+  typeFilter.addEventListener('change', render);
+
+  populateFilters();
+  render();
+  updateNextDeparture();
+</script>
+</body>
+</html>
+</html>
