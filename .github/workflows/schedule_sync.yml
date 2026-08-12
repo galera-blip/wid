@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install google-genai
-      - name: Scrape and update
+      - run: pip install -U "google-genai>=2.0.0" requests
+      - name: Scrape with Interactions API
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PAYLOAD_IMAGE_URL: ${{ github.event.client_payload.image_url }}
@@ -31,32 +31,28 @@ jobs:
           from google import genai
 
           url = os.environ.get("PAYLOAD_IMAGE_URL") or os.environ.get("INPUT_IMAGE_URL")
-          print(f"Downloading {url}")
-          img = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}).content
-          open("./ferry.jpg","wb").write(img)
+          print(f"URL: {url}")
+          img_bytes = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}).content
+          b64 = base64.b64encode(img_bytes).decode('utf-8')
 
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          
-          with open("./ferry.jpg","rb") as f:
-            img_b64 = base64.b64encode(f.read()).decode()
 
-          resp = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[
-              {
-                "role":"user",
-                "parts":[
-                  {"text":"Extract BATANGAS to BALATERO and BALATERO to BATANGAS ferry schedule from this image. Return ONLY valid JSON like {\"toPG\":[{\"company\":\"Montenegro\",\"time\":\"7:30 AM\"}],\"toBAT\":[{\"company\":\"Montenegro\",\"time\":\"8:30 AM\"}]}. No markdown."},
-                  {"inline_data":{"mime_type":"image/jpeg","data":img_b64}}
-                ]
-              }
+          # NEW Interactions API pattern - from ai.google.dev/gemini-api/docs/image-understanding
+          interaction = client.interactions.create(
+            model="gemini-2.5-flash",
+            input=[
+              {"type":"text","text":"Extract BATANGAS to BALATERO and BALATERO to BATANGAS ferry schedule. Return ONLY JSON {\"toPG\":[{\"company\":\"Montenegro\",\"time\":\"7:30 AM\"}],\"toBAT\":[{\"company\":\"Montenegro\",\"time\":\"8:30 AM\"}]}. No markdown."},
+              {"type":"image","data":b64,"mime_type":"image/jpeg"}
             ]
           )
-          txt = resp.text
-          print("GEMINI RAW:", txt)
+
+          txt = interaction.output_text
+          print(f"RAW: {txt}")
           m = re.search(r'\{[\s\S]*\}', txt)
+          if not m:
+              raise ValueError("No JSON found")
           data = json.loads(m.group(0))
-          print("PARSED:", data)
+          print(f"PARSED: {data}")
 
           html = open('index.html','r',encoding='utf-8').read()
           s = html.index('const schedule = {')
@@ -69,4 +65,4 @@ jobs:
           git config user.name 'bot'
           git config user.email 'bot@github.com'
           git add index.html
-          git diff --staged --quiet || (git commit -m "Auto-sync ferry" && git push)
+          git diff --staged --quiet || (git commit -m "Auto-sync ferry [Interactions API]" && git push)
