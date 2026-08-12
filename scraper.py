@@ -85,13 +85,13 @@ def parse_schedule_from_image(image_url, default_company):
         }}
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=[
-                prompt,
-                types.Part.from_bytes(data=img_bytes, mime_type=mime_type)
-            ]
-        )
+       response = client.models.generate_content(
+    model='gemini-2.5-flash-preview-05-20',
+    contents=[
+        prompt,
+        types.Part.from_bytes(data=img_bytes, mime_type=mime_type)
+    ]
+)
 
         match = re.search(r'\{[\s\S]*\}', response.text)
         if match:
