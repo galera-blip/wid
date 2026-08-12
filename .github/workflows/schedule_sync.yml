@@ -16,35 +16,54 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: '20'
-      - run: npm install -g @google/gemini-cli@latest
+          python-version: '3.11'
+      - run: pip install google-genai
       - name: Scrape and update
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_CLI_TRUST_WORKSPACE: "true"
           PAYLOAD_IMAGE_URL: ${{ github.event.client_payload.image_url }}
           INPUT_IMAGE_URL: ${{ inputs.image_url }}
         run: |
-          URL="${PAYLOAD_IMAGE_URL:-$INPUT_IMAGE_URL}"
-          curl -L -A "Mozilla/5.0" -o ./ferry.jpg "$URL"
-          gemini --model gemini-2.0-flash --yolo --skip-trust -p "Extract BATANGAS to BALATERO and BALATERO to BATANGAS ferry schedule from @./ferry.jpg . Return ONLY JSON {\"toPG\":[{\"company\":\"Montenegro\",\"time\":\"7:30 AM\"}],\"toBAT\":[{\"company\":\"Montenegro\",\"time\":\"8:30 AM\"}]}. No markdown." > ./out.txt
-          cat ./out.txt
-          python3 -c "
-          import re, json, sys
-          txt=open('./out.txt').read()
-          print(txt)
-          m=re.search(r'\{[\s\S]*\}', txt)
-          if not m:
-            print('No JSON, exit'); sys.exit(1)
-          data=json.loads(m.group(0))
-          html=open('index.html','r',encoding='utf-8').read()
-          s=html.index('const schedule = {')
-          e=html.index('let currentDir', s)
+          python3 << 'PY'
+          import os, re, json, base64, requests
+          from google import genai
+
+          url = os.environ.get("PAYLOAD_IMAGE_URL") or os.environ.get("INPUT_IMAGE_URL")
+          print(f"Downloading {url}")
+          img = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}).content
+          open("./ferry.jpg","wb").write(img)
+
+          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+          
+          with open("./ferry.jpg","rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+
+          resp = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[
+              {
+                "role":"user",
+                "parts":[
+                  {"text":"Extract BATANGAS to BALATERO and BALATERO to BATANGAS ferry schedule from this image. Return ONLY valid JSON like {\"toPG\":[{\"company\":\"Montenegro\",\"time\":\"7:30 AM\"}],\"toBAT\":[{\"company\":\"Montenegro\",\"time\":\"8:30 AM\"}]}. No markdown."},
+                  {"inline_data":{"mime_type":"image/jpeg","data":img_b64}}
+                ]
+              }
+            ]
+          )
+          txt = resp.text
+          print("GEMINI RAW:", txt)
+          m = re.search(r'\{[\s\S]*\}', txt)
+          data = json.loads(m.group(0))
+          print("PARSED:", data)
+
+          html = open('index.html','r',encoding='utf-8').read()
+          s = html.index('const schedule = {')
+          e = html.index('let currentDir', s)
           open('index.html','w',encoding='utf-8').write(html[:s]+f'const schedule = {json.dumps(data,indent=2)};\n\n  let currentDir'+html[e+12:])
-          "
-          rm -f ./ferry.jpg ./out.txt
+          print("DONE")
+          PY
       - name: Push
         run: |
           git config user.name 'bot'
