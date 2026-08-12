@@ -1,22 +1,19 @@
 name: Daily Ferry Schedule Sync
-
 on:
-  # Triggered instantly by Make.com webhook
   repository_dispatch:
     types: [fb_image_payload]
-
-  # Triggered manually via GitHub UI for testing
   workflow_dispatch:
     inputs:
       image_url:
-        description: 'Direct FB Image URL (Optional test input)'
+        description: 'Direct FB Image URL'
         required: false
         type: string
 
 jobs:
   update-schedule:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write   # <-- THIS WAS MISSING
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,8 +37,8 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git config --global user.name 'Schedule Bot'
-          git config --global user.email 'bot@galeraguide.com'
+          git config user.name 'Schedule Bot'
+          git config user.email 'bot@galeraguide.com'
           git add index.html
-          git commit -m "Auto-synced ferry schedules [skip ci]" || exit 0
+          git diff --staged --quiet || git commit -m "Auto-synced ferry schedules [skip ci]"
           git push
