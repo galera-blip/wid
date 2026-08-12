@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -U "google-genai>=2.0.0" requests
+      - run: pip install -U "google-genai>=2.3.0" requests
       - name: Scrape with Interactions API
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -30,39 +30,133 @@ jobs:
           import os, re, json, base64, requests
           from google import genai
 
-          url = os.environ.get("PAYLOAD_IMAGE_URL") or os.environ.get("INPUT_IMAGE_URL")
+          url = (os.environ.get("PAYLOAD_IMAGE_URL") or os.environ.get("INPUT_IMAGE_URL") or "").strip()
           print(f"URL: {url}")
-          img_bytes = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}).content
+
+          if not url:
+              print("No image URL provided. Exiting without changes.")
+              raise SystemExit(0)
+
+          headers = {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+          }
+
+          res = requests.get(url, headers=headers, timeout=15)
+          content_type = res.headers.get("Content-Type", "").lower()
+
+          # If the URL is an FB HTML permalink (not a direct image), resolve the real image URL
+          if "text/html" in content_type:
+              direct_url = None
+              og_match = re.search(r'property="og:image"\s+content="([^"]+)"', res.text)
+              if og_match:
+                  direct_url = og_match.group(1).replace("&amp;", "&")
+              if not direct_url:
+                  scontent_match = re.search(r'https://scontent[^"\\]+', res.text)
+                  if scontent_match:
+                      direct_url = scontent_match.group(0).replace("\\/", "/").replace("&amp;", "&")
+              if not direct_url:
+                  print("Could not resolve a direct image URL from the HTML page. Exiting.")
+                  raise SystemExit(0)
+              print(f"Resolved FB Page to direct CDN image: {direct_url[:70]}...")
+              img_res = requests.get(direct_url, headers=headers, timeout=15)
+              img_bytes = img_res.content
+              mime_type = img_res.headers.get("Content-Type", "image/jpeg").split(";")[0]
+          else:
+              img_bytes = res.content
+              mime_type = content_type.split(";")[0] or "image/jpeg"
+
+          if not mime_type or "image" not in mime_type:
+              mime_type = "image/jpeg"
+
           b64 = base64.b64encode(img_bytes).decode('utf-8')
 
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-          # NEW Interactions API pattern - from ai.google.dev/gemini-api/docs/image-understanding
+          prompt = """
+          Analyze this ferry schedule flyer image.
+
+          STRICT RULES:
+          1. Extract the ferry operator/company name from the graphic header if present. Default to "Galerian Water Transport Services" if not specified.
+          2. ONLY extract schedules for routes between "BATANGAS PORT" and "BALATERO PORT" (Puerto Galera).
+          3. "BALATERO TO BATANGAS" maps to "toBAT".
+          4. "BATANGAS TO BALATERO" maps to "toPG".
+          5. If a trip is marked "CANCELLED" or "SUSPENDED", set "status": "CANCELLED" and "note": "CANCELLED TODAY".
+          6. Default "type": "Fastcraft". Extract vessel name (e.g. PTERIPPUS 1, ISLAND WATER 1) if available.
+          """
+
+          schema = {
+              "type": "object",
+              "properties": {
+                  "toPG": {
+                      "type": "array",
+                      "items": {
+                          "type": "object",
+                          "properties": {
+                              "company": {"type": "string"},
+                              "type": {"type": "string"},
+                              "vessel": {"type": "string"},
+                              "time": {"type": "string"},
+                              "status": {"type": "string"},
+                              "note": {"type": "string"}
+                          },
+                          "required": ["company", "time"]
+                      }
+                  },
+                  "toBAT": {
+                      "type": "array",
+                      "items": {
+                          "type": "object",
+                          "properties": {
+                              "company": {"type": "string"},
+                              "type": {"type": "string"},
+                              "vessel": {"type": "string"},
+                              "time": {"type": "string"},
+                              "status": {"type": "string"},
+                              "note": {"type": "string"}
+                          },
+                          "required": ["company", "time"]
+                      }
+                  }
+              },
+              "required": ["toPG", "toBAT"]
+          }
+
           interaction = client.interactions.create(
-            model="gemini-2.5-flash",
-            input=[
-              {"type":"text","text":"Extract BATANGAS to BALATERO and BALATERO to BATANGAS ferry schedule. Return ONLY JSON {\"toPG\":[{\"company\":\"Montenegro\",\"time\":\"7:30 AM\"}],\"toBAT\":[{\"company\":\"Montenegro\",\"time\":\"8:30 AM\"}]}. No markdown."},
-              {"type":"image","data":b64,"mime_type":"image/jpeg"}
-            ]
+              model="gemini-3.6-flash",
+              input=[
+                  {"type": "text", "text": prompt},
+                  {"type": "image", "data": b64, "mime_type": mime_type}
+              ],
+              response_format={
+                  "type": "text",
+                  "mime_type": "application/json",
+                  "schema": schema
+              }
           )
 
           txt = interaction.output_text
           print(f"RAW: {txt}")
-          m = re.search(r'\{[\s\S]*\}', txt)
-          if not m:
-              raise ValueError("No JSON found")
-          data = json.loads(m.group(0))
+          data = json.loads(txt)
           print(f"PARSED: {data}")
 
-          html = open('index.html','r',encoding='utf-8').read()
-          s = html.index('const schedule = {')
-          e = html.index('let currentDir', s)
-          open('index.html','w',encoding='utf-8').write(html[:s]+f'const schedule = {json.dumps(data,indent=2)};\n\n  let currentDir'+html[e+12:])
-          print("DONE")
+          if not data.get("toPG") and not data.get("toBAT"):
+              print("No relevant schedule data extracted. Exiting without changes.")
+              raise SystemExit(0)
+
+          html = open('index.html', 'r', encoding='utf-8').read()
+          updated_html = re.sub(
+              r'const schedule = \{[\s\S]*?\};',
+              f'const schedule = {json.dumps(data, indent=2)};',
+              html
+          )
+          open('index.html', 'w', encoding='utf-8').write(updated_html)
+          print("index.html successfully updated with live schedules!")
           PY
-      - name: Push
+      - name: Commit and push changes
         run: |
-          git config user.name 'bot'
-          git config user.email 'bot@github.com'
+          git config --global user.name 'Schedule Bot'
+          git config --global user.email 'bot@galeraguide.com'
           git add index.html
-          git diff --staged --quiet || (git commit -m "Auto-sync ferry [Interactions API]" && git push)
+          git commit -m "Auto-synced ferry schedules [skip ci]" || exit 0
+          git push
