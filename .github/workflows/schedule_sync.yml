@@ -16,19 +16,46 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-      - run: pip install google-genai requests
-      - name: Run scraper
+          node-version: '20'
+
+      - name: Install Gemini CLI 0.1.18+
+        run: npm install -g @google/gemini-cli@latest
+
+      - name: Scrape and update
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PAYLOAD_IMAGE_URL: ${{ github.event.client_payload.image_url }}
           INPUT_IMAGE_URL: ${{ inputs.image_url }}
-        run: python scraper.py
+        run: |
+          URL="${PAYLOAD_IMAGE_URL:-$INPUT_IMAGE_URL}"
+          echo "URL: $URL"
+          curl -L -A "Mozilla/5.0" -o /tmp/ferry.jpg "$URL"
+          ls -lh /tmp/ferry.jpg
+
+          # Use Gemini CLI with @ to attach image - this uses Interactions API
+          gemini --model gemini-2.5-flash --yolo -p "Extract BATANGAS<->BALATERO ferry schedule from @/tmp/ferry.jpg . Return ONLY valid JSON like {\"toPG\":[{\"company\":\"Montenegro\",\"time\":\"7:30 AM\"}],\"toBAT\":[...]}. No markdown, no explanation." > /tmp/out.txt
+          cat /tmp/out.txt
+
+          # Extract JSON and update index.html with python (no google lib needed)
+          python3 -c "
+          import re, json
+          txt=open('/tmp/out.txt').read()
+          m=re.search(r'\{[\s\S]*\}', txt)
+          data=json.loads(m.group(0))
+          print(f'Parsed {data}')
+          html=open('index.html','r',encoding='utf-8').read()
+          s=html.index('const schedule = {'); e=html.index('let currentDir', s)
+          open('index.html','w',encoding='utf-8').write(html[:s]+f'const schedule = {json.dumps(data,indent=2)};\n\n  let currentDir'+html[e+12:])
+          print('DONE')
+          "
+
       - name: Push
         run: |
           git config user.name 'bot'
           git config user.email 'bot@github.com'
           git add index.html
-          git diff --staged --quiet || (git commit -m "Auto-sync" && git push)
+          git diff --staged --quiet || (git commit -m "Auto-sync ferry" && git push)
