@@ -1,16 +1,13 @@
 name: Daily Ferry Schedule Sync
-
 on:
   workflow_dispatch:
     inputs:
       image_url:
-        description: 'Direct image URL (ends with .jpg) to test manually'
+        description: 'Direct image URL'
         required: false
         type: string
   repository_dispatch:
     types: [ferry_schedule_update]
-  schedule:
-    - cron: '0 2 * * *'  # daily 10am PH time
 
 jobs:
   scrape:
@@ -18,34 +15,20 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install google-genai requests
-
-      - name: Run schedule scraper
+      - run: pip install google-genai requests
+      - name: Run scraper
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PAYLOAD_IMAGE_URL: ${{ github.event.client_payload.image_url }}
           INPUT_IMAGE_URL: ${{ inputs.image_url }}
         run: python scraper.py
-
-      - name: Commit and push if changed
+      - name: Push
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          if [[ -n $(git status --porcelain index.html) ]]; then
-            git add index.html
-            git commit -m "Update ferry schedule $(date +'%Y-%m-%d')"
-            git push
-          else
-            echo "No changes to commit"
-          fi
+          git config user.name 'bot'
+          git config user.email 'bot@github.com'
+          git add index.html
+          git diff --staged --quiet || (git commit -m "Auto-sync" && git push)
