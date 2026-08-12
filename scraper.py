@@ -86,7 +86,7 @@ def parse_schedule_from_image(image_url, default_company):
         """
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=[
                 prompt,
                 types.Part.from_bytes(data=img_bytes, mime_type=mime_type)
