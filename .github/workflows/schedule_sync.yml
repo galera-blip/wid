@@ -13,6 +13,10 @@ on:
   repository_dispatch:
     types: [ferry_schedule_update]
 
+concurrency:
+  group: ferry-schedule-sync
+  cancel-in-progress: false
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -255,4 +259,5 @@ jobs:
           git config --global user.email 'bot@galeraguide.com'
           git add index.html
           git commit -m "Auto-synced ferry schedule exceptions [skip ci]" || exit 0
+          git pull --rebase origin main
           git push
