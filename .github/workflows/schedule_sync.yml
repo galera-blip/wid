@@ -257,7 +257,7 @@ jobs:
           html = open('index.html', 'r', encoding='utf-8').read()
           updated_html = re.sub(
               r'const schedule = \{[\s\S]*?\};',
-              f'const schedule = {json.dumps(schedule, indent=2)};',
+              lambda m: f'const schedule = {json.dumps(schedule, indent=2)};',
               html
           )
           open('index.html', 'w', encoding='utf-8').write(updated_html)
