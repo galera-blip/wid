@@ -100,27 +100,38 @@ jobs:
           You are looking at a Facebook post image from a Puerto Galera <-> Batangas ferry
           operator. {company_line}
 
-          YOUR ONLY JOB: determine whether this image changes which trips are running today.
-          Do NOT transcribe the full schedule. Only report exceptions.
+          YOUR ONLY JOB: determine which specific trips are running or cancelled today. Do NOT
+          invent or assume trips that are not shown in the image.
 
-          There are two possible kinds of posts:
+          Ferry pages post in different formats. Use this rule to classify each direction
+          shown in the image:
 
-          A) CANCELLATION POST - explicitly lists one or more trip times that are
-             CANCELLED or SUSPENDED today.
-             -> mode = "cancelled", times = the list of cancelled departure times.
+          RULE 1 - EXPLICIT CANCELLATION LABELS PRESENT:
+          If the image explicitly marks one or more specific times as "CANCELLED",
+          "CANCELLED TRIP", or "SUSPENDED" - whether that's the only thing shown, or sitting
+          in a grid alongside OTHER times that show a normal running status (e.g. a vessel
+          name or boat type) - then:
+          -> mode = "cancelled_trips". "times" = ONLY the specific time(s) explicitly labeled
+             cancelled/suspended. Do NOT include times shown as running normally. Do not assume
+             anything about times not shown in the image at all.
 
-          B) AVAILABILITY POST - explicitly says only a specific trip/time (or small set of
-             times) IS running today (e.g. "trip available 10AM", "only trip today: 7:30AM").
-             This implies every OTHER normal trip from this same company is cancelled today.
-             -> mode = "available_only", times = the list of times that ARE running.
+          RULE 2 - PLAIN LISTING, NO CANCELLATION LABELS ANYWHERE:
+          If the image lists specific departure time(s) for today with no cancellation
+          wording at all anywhere in the image (a plain "today's trips" list):
+          -> mode = "confirmed_trips". "times" = EVERY time listed for that direction, exactly
+             as shown. This means any trip NOT listed for that direction today is implicitly
+             not running - list only what IS shown.
 
-          If the image is NOT a ferry schedule / trip-status announcement at all (e.g. it's a
-          general promo, event photo, unrelated announcement, meme, etc.), return an empty
-          "updates" array.
+          RULE 3 - NOT RELEVANT:
+          The image is not about today's ferry trips at all (promo, event photo, meme,
+          unrelated announcement, or clearly a different/past date not representing today).
+          -> return an empty "updates" array.
 
-          If a direction (BATANGAS TO BALATERO = toBAT, or BALATERO TO BATANGAS = toPG) is
-          clearly indicated, include it. If not specified or it applies to both directions,
-          set "direction" to "both".
+          Treat each direction separately based on what's actually shown; if only one
+          direction appears in the image, only report that direction.
+
+          Direction mapping: "BALATERO TO BATANGAS" / "BALATERO PORT DEPARTURE" = toBAT.
+          "BATANGAS TO BALATERO" / "BATANGAS PORT DEPARTURE" = toPG.
 
           Field values must contain ONLY the final extracted value - no reasoning, no
           alternative phrasing, no explanations. A time value must look exactly like "10:00 AM".
@@ -137,8 +148,8 @@ jobs:
                           "type": "object",
                           "properties": {
                               "company": {"type": "string"},
-                              "direction": {"type": "string", "enum": ["toPG", "toBAT", "both"]},
-                              "mode": {"type": "string", "enum": ["cancelled", "available_only"]},
+                              "direction": {"type": "string", "enum": ["toPG", "toBAT"]},
+                              "mode": {"type": "string", "enum": ["cancelled_trips", "confirmed_trips"]},
                               "times": {"type": "array", "items": {"type": "string"}}
                           },
                           "required": ["company", "direction", "mode", "times"]
@@ -207,39 +218,38 @@ jobs:
               "toBAT": [dict(trip) for trip in master.get("toBAT", [])],
           }
 
-          def directions_for(direction):
-              if direction == "both":
-                  return ["toPG", "toBAT"]
-              return [direction]
-
           for upd in updates:
               company = normalize_company(upd.get("company", ""))
               mode = upd.get("mode")
+              direction = upd.get("direction")
               times = {normalize_time(t) for t in upd.get("times", [])}
-              if not company or not times:
+              if not company or not direction or direction not in schedule:
                   continue
 
-              for direction in directions_for(upd.get("direction", "both")):
-                  trips = schedule.get(direction, [])
-                  company_trips = [t for t in trips if t.get("company") == company]
-                  if not company_trips:
-                      print(f"WARNING: no master trips matched company '{company}' in {direction}")
+              trips = schedule[direction]
+              company_trips = [t for t in trips if t.get("company") == company]
+              if not company_trips:
+                  print(f"WARNING: no master trips matched company '{company}' in {direction}")
+                  continue
+
+              if mode == "cancelled_trips":
+                  if not times:
                       continue
+                  for trip in company_trips:
+                      if normalize_time(trip.get("time")) in times:
+                          trip["status"] = "CANCELLED"
+                          trip["note"] = "CANCELLED TODAY"
 
-                  if mode == "cancelled":
-                      for trip in company_trips:
-                          if normalize_time(trip.get("time")) in times:
-                              trip["status"] = "CANCELLED"
-                              trip["note"] = "CANCELLED TODAY"
-
-                  elif mode == "available_only":
-                      for trip in company_trips:
-                          if normalize_time(trip.get("time")) not in times:
-                              trip["status"] = "CANCELLED"
-                              trip["note"] = "CANCELLED TODAY"
-                          else:
-                              trip.pop("status", None)
-                              trip.pop("note", None)
+              elif mode == "confirmed_trips":
+                  # Whatever is listed today IS running; anything else from this
+                  # company in this direction is implicitly not running today.
+                  for trip in company_trips:
+                      if normalize_time(trip.get("time")) not in times:
+                          trip["status"] = "CANCELLED"
+                          trip["note"] = "CANCELLED TODAY"
+                      else:
+                          trip.pop("status", None)
+                          trip.pop("note", None)
 
           # -------------------------------------------------------------
           # 4. Write merged schedule into index.html
