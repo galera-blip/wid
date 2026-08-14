@@ -250,6 +250,17 @@ jobs:
               t = re.sub(r'\s+', ' ', t).strip()
               return t
 
+          def time_to_minutes(t):
+              m = re.match(r'(\d{1,2}):(\d{2})\s*(AM|PM)', normalize_time(t))
+              if not m:
+                  return None
+              h, mi, ap = int(m.group(1)), int(m.group(2)), m.group(3)
+              if ap == "PM" and h != 12:
+                  h += 12
+              if ap == "AM" and h == 12:
+                  h = 0
+              return h * 60 + mi
+
           for upd in updates:
               company = normalize_company(upd.get("company", ""))
               mode = upd.get("mode")
@@ -273,15 +284,60 @@ jobs:
                           trip["note"] = "CANCELLED TODAY"
 
               elif mode == "confirmed_trips":
-                  # Whatever is listed today IS running; anything else from this
-                  # company in this direction is implicitly not running today.
-                  for trip in company_trips:
-                      if normalize_time(trip.get("time")) not in times:
-                          trip["status"] = "CANCELLED"
-                          trip["note"] = "CANCELLED TODAY"
-                      else:
-                          trip.pop("status", None)
-                          trip.pop("note", None)
+                  # Match each posted time to the CLOSEST existing trip slot for
+                  # this company/direction, instead of requiring an exact match.
+                  # This correctly treats a shifted departure time (e.g. 9:45 AM
+                  # moved to 8:00 AM) as the SAME trip updated, rather than
+                  # cancelling the old time and silently dropping the new one.
+                  orig_by_norm = {}
+                  for t in upd.get("times", []):
+                      orig_by_norm[normalize_time(t)] = t
+
+                  remaining_times = list(orig_by_norm.keys())
+                  remaining_master = list(company_trips)
+                  pairs = []
+
+                  while remaining_master and remaining_times:
+                      best = None
+                      best_diff = None
+                      for mt in remaining_master:
+                          mt_min = time_to_minutes(mt.get("time"))
+                          if mt_min is None:
+                              continue
+                          for rt in remaining_times:
+                              rt_min = time_to_minutes(rt)
+                              if rt_min is None:
+                                  continue
+                              diff = abs(mt_min - rt_min)
+                              if best_diff is None or diff < best_diff:
+                                  best_diff = diff
+                                  best = (mt, rt)
+                      if best is None:
+                          break
+                      pairs.append(best)
+                      remaining_master.remove(best[0])
+                      remaining_times.remove(best[1])
+
+                  # Matched trips: update to today's (possibly shifted) time and
+                  # make sure they're marked as running.
+                  for trip, norm_time in pairs:
+                      trip["time"] = orig_by_norm[norm_time]
+                      trip.pop("status", None)
+                      trip.pop("note", None)
+
+                  # Master trips with no match left over - genuinely not running today.
+                  for trip in remaining_master:
+                      trip["status"] = "CANCELLED"
+                      trip["note"] = "CANCELLED TODAY"
+
+                  # Posted times with no master slot left - a genuinely new trip today.
+                  default_type = company_trips[0].get("type", "Fastcraft") if company_trips else "Fastcraft"
+                  for norm_time in remaining_times:
+                      trips.append({
+                          "type": default_type,
+                          "company": company,
+                          "time": orig_by_norm[norm_time]
+                      })
 
           # Persist today's effective schedule so the NEXT run (possibly a
           # different company posting later today) builds on top of this
