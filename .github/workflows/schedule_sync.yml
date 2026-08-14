@@ -12,6 +12,13 @@ on:
         type: string
   repository_dispatch:
     types: [ferry_schedule_update]
+  schedule:
+    # 6:00 PM Asia/Manila (UTC+8) every day = 10:00 UTC.
+    # Resets the schedule back to the clean master baseline in the evening,
+    # once no more trips run that day and companies start posting tomorrow's
+    # schedule, so stale cancellations don't carry into a day nothing new
+    # has been posted about yet.
+    - cron: '0 10 * * *'
 
 concurrency:
   group: ferry-schedule-sync
@@ -35,6 +42,7 @@ jobs:
           PAYLOAD_COMPANY: ${{ github.event.client_payload.company }}
           INPUT_IMAGE_URL: ${{ inputs.image_url }}
           INPUT_COMPANY: ${{ inputs.company }}
+          IS_SCHEDULED_RESET: ${{ github.event_name == 'schedule' }}
         run: |
           python3 << 'PY'
           import os, re, json, base64, requests
@@ -42,154 +50,183 @@ jobs:
 
           url = (os.environ.get("PAYLOAD_IMAGE_URL") or os.environ.get("INPUT_IMAGE_URL") or "").strip()
           company_hint = (os.environ.get("PAYLOAD_COMPANY") or os.environ.get("INPUT_COMPANY") or "").strip()
+          is_scheduled_reset = os.environ.get("IS_SCHEDULED_RESET", "").strip().lower() == "true"
           print(f"URL: {url}")
           print(f"Company hint: {company_hint}")
+          print(f"Scheduled reset run: {is_scheduled_reset}")
 
-          if not url:
+          if not url and not is_scheduled_reset:
               print("No image URL provided. Exiting without changes.")
               raise SystemExit(0)
 
-          # -------------------------------------------------------------
-          # 1. Fetch image (resolving FB HTML permalinks to direct CDN URLs)
-          # -------------------------------------------------------------
-          headers = {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
-          }
-          res = requests.get(url, headers=headers, timeout=15)
-          content_type = res.headers.get("Content-Type", "").lower()
-
-          if "text/html" in content_type:
-              direct_url = None
-              og_match = re.search(r'property="og:image"\s+content="([^"]+)"', res.text)
-              if og_match:
-                  direct_url = og_match.group(1).replace("&amp;", "&")
-              if not direct_url:
-                  scontent_match = re.search(r'https://scontent[^"\\]+', res.text)
-                  if scontent_match:
-                      direct_url = scontent_match.group(0).replace("\\/", "/").replace("&amp;", "&")
-              if not direct_url:
-                  print("Could not resolve a direct image URL from the HTML page. Exiting.")
-                  raise SystemExit(0)
-              print(f"Resolved FB Page to direct CDN image: {direct_url[:70]}...")
-              img_res = requests.get(direct_url, headers=headers, timeout=15)
-              img_bytes = img_res.content
-              mime_type = img_res.headers.get("Content-Type", "image/jpeg").split(";")[0]
+          if is_scheduled_reset:
+              print("Scheduled daily reset - skipping image fetch and Gemini call.")
+              updates = []
           else:
-              img_bytes = res.content
-              mime_type = content_type.split(";")[0] or "image/jpeg"
-
-          if not mime_type or "image" not in mime_type:
-              mime_type = "image/jpeg"
-
-          b64 = base64.b64encode(img_bytes).decode('utf-8')
-
-          # -------------------------------------------------------------
-          # 2. Ask Gemini ONLY for cancellations / exclusive-availability,
-          #    not a full re-transcription of the schedule.
-          # -------------------------------------------------------------
-          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-
-          company_line = (
-              f'The company posting this is "{company_hint}". Use this exact company name in your output.'
-              if company_hint else
-              'Identify the ferry operator/company name from the image header.'
-          )
-
-          prompt = f"""
-          You are looking at a Facebook post image from a Puerto Galera <-> Batangas ferry
-          operator. {company_line}
-
-          YOUR ONLY JOB: determine which specific trips are running or cancelled today. Do NOT
-          invent or assume trips that are not shown in the image.
-
-          Ferry pages post in different formats. Use this rule to classify each direction
-          shown in the image:
-
-          RULE 1 - EXPLICIT CANCELLATION LABELS PRESENT:
-          If the image explicitly marks one or more specific times as "CANCELLED",
-          "CANCELLED TRIP", or "SUSPENDED" - whether that's the only thing shown, or sitting
-          in a grid alongside OTHER times that show a normal running status (e.g. a vessel
-          name or boat type) - then:
-          -> mode = "cancelled_trips". "times" = ONLY the specific time(s) explicitly labeled
-             cancelled/suspended. Do NOT include times shown as running normally. Do not assume
-             anything about times not shown in the image at all.
-
-          RULE 2 - PLAIN LISTING, NO CANCELLATION LABELS ANYWHERE:
-          If the image lists specific departure time(s) for today with no cancellation
-          wording at all anywhere in the image (a plain "today's trips" list):
-          -> mode = "confirmed_trips". "times" = EVERY time listed for that direction, exactly
-             as shown. This means any trip NOT listed for that direction today is implicitly
-             not running - list only what IS shown.
-
-          RULE 3 - NOT RELEVANT:
-          The image is not about today's ferry trips at all (promo, event photo, meme,
-          unrelated announcement, or clearly a different/past date not representing today).
-          -> return an empty "updates" array.
-
-          Treat each direction separately based on what's actually shown; if only one
-          direction appears in the image, only report that direction.
-
-          Direction mapping: "BALATERO TO BATANGAS" / "BALATERO PORT DEPARTURE" = toBAT.
-          "BATANGAS TO BALATERO" / "BATANGAS PORT DEPARTURE" = toPG.
-
-          Field values must contain ONLY the final extracted value - no reasoning, no
-          alternative phrasing, no explanations. A time value must look exactly like "10:00 AM".
-
-          Return your answer as JSON matching the provided schema.
-          """
-
-          schema = {
-              "type": "object",
-              "properties": {
-                  "updates": {
-                      "type": "array",
-                      "items": {
-                          "type": "object",
-                          "properties": {
-                              "company": {"type": "string"},
-                              "direction": {"type": "string", "enum": ["toPG", "toBAT"]},
-                              "mode": {"type": "string", "enum": ["cancelled_trips", "confirmed_trips"]},
-                              "times": {"type": "array", "items": {"type": "string"}}
-                          },
-                          "required": ["company", "direction", "mode", "times"]
-                      }
-                  }
-              },
-              "required": ["updates"]
-          }
-
-          interaction = client.interactions.create(
-              model="gemini-3.6-flash",
-              input=[
-                  {"type": "text", "text": prompt},
-                  {"type": "image", "data": b64, "mime_type": mime_type}
-              ],
-              generation_config={"thinking_level": "minimal"},
-              response_format={
-                  "type": "text",
-                  "mime_type": "application/json",
-                  "schema": schema
+              # ---------------------------------------------------------
+              # 1. Fetch image (resolving FB HTML permalinks to direct URLs)
+              # ---------------------------------------------------------
+              headers = {
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
               }
-          )
+              res = requests.get(url, headers=headers, timeout=15)
+              content_type = res.headers.get("Content-Type", "").lower()
 
-          txt = interaction.output_text
-          print(f"RAW: {txt}")
-          result = json.loads(txt)
-          updates = result.get("updates", [])
-          print(f"UPDATES: {updates}")
+              if "text/html" in content_type:
+                  direct_url = None
+                  og_match = re.search(r'property="og:image"\s+content="([^"]+)"', res.text)
+                  if og_match:
+                      direct_url = og_match.group(1).replace("&amp;", "&")
+                  if not direct_url:
+                      scontent_match = re.search(r'https://scontent[^"\\]+', res.text)
+                      if scontent_match:
+                          direct_url = scontent_match.group(0).replace("\\/", "/").replace("&amp;", "&")
+                  if not direct_url:
+                      print("Could not resolve a direct image URL from the HTML page. Exiting.")
+                      raise SystemExit(0)
+                  print(f"Resolved FB Page to direct CDN image: {direct_url[:70]}...")
+                  img_res = requests.get(direct_url, headers=headers, timeout=15)
+                  img_bytes = img_res.content
+                  mime_type = img_res.headers.get("Content-Type", "image/jpeg").split(";")[0]
+              else:
+                  img_bytes = res.content
+                  mime_type = content_type.split(";")[0] or "image/jpeg"
 
-          if not updates:
+              if not mime_type or "image" not in mime_type:
+                  mime_type = "image/jpeg"
+
+              b64 = base64.b64encode(img_bytes).decode('utf-8')
+
+              # ---------------------------------------------------------
+              # 2. Ask Gemini ONLY for cancellations / exclusive-availability,
+              #    not a full re-transcription of the schedule.
+              # ---------------------------------------------------------
+              client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+              company_line = (
+                  f'The company posting this is "{company_hint}". Use this exact company name in your output.'
+                  if company_hint else
+                  'Identify the ferry operator/company name from the image header.'
+              )
+
+              prompt = f"""
+              You are looking at a Facebook post image from a Puerto Galera <-> Batangas ferry
+              operator. {company_line}
+
+              YOUR ONLY JOB: determine which specific trips are running or cancelled today. Do NOT
+              invent or assume trips that are not shown in the image.
+
+              Ferry pages post in different formats. Use this rule to classify each direction
+              shown in the image:
+
+              RULE 1 - EXPLICIT CANCELLATION LABELS PRESENT:
+              If the image explicitly marks one or more specific times as "CANCELLED",
+              "CANCELLED TRIP", or "SUSPENDED" - whether that's the only thing shown, or sitting
+              in a grid alongside OTHER times that show a normal running status (e.g. a vessel
+              name or boat type) - then:
+              -> mode = "cancelled_trips". "times" = ONLY the specific time(s) explicitly labeled
+                 cancelled/suspended. Do NOT include times shown as running normally. Do not assume
+                 anything about times not shown in the image at all.
+
+              RULE 2 - PLAIN LISTING, NO CANCELLATION LABELS ANYWHERE:
+              If the image lists specific departure time(s) for today with no cancellation
+              wording at all anywhere in the image (a plain "today's trips" list):
+              -> mode = "confirmed_trips". "times" = EVERY time listed for that direction, exactly
+                 as shown. This means any trip NOT listed for that direction today is implicitly
+                 not running - list only what IS shown.
+
+              RULE 3 - NOT RELEVANT:
+              The image is not about today's ferry trips at all (promo, event photo, meme,
+              unrelated announcement, or clearly a different/past date not representing today).
+              -> return an empty "updates" array.
+
+              Treat each direction separately based on what's actually shown; if only one
+              direction appears in the image, only report that direction.
+
+              Direction mapping: "BALATERO TO BATANGAS" / "BALATERO PORT DEPARTURE" = toBAT.
+              "BATANGAS TO BALATERO" / "BATANGAS PORT DEPARTURE" = toPG.
+
+              Field values must contain ONLY the final extracted value - no reasoning, no
+              alternative phrasing, no explanations. A time value must look exactly like "10:00 AM".
+
+              Return your answer as JSON matching the provided schema.
+              """
+
+              schema = {
+                  "type": "object",
+                  "properties": {
+                      "updates": {
+                          "type": "array",
+                          "items": {
+                              "type": "object",
+                              "properties": {
+                                  "company": {"type": "string"},
+                                  "direction": {"type": "string", "enum": ["toPG", "toBAT"]},
+                                  "mode": {"type": "string", "enum": ["cancelled_trips", "confirmed_trips"]},
+                                  "times": {"type": "array", "items": {"type": "string"}}
+                              },
+                              "required": ["company", "direction", "mode", "times"]
+                          }
+                      }
+                  },
+                  "required": ["updates"]
+              }
+
+              interaction = client.interactions.create(
+                  model="gemini-3.6-flash",
+                  input=[
+                      {"type": "text", "text": prompt},
+                      {"type": "image", "data": b64, "mime_type": mime_type}
+                  ],
+                  generation_config={"thinking_level": "minimal"},
+                  response_format={
+                      "type": "text",
+                      "mime_type": "application/json",
+                      "schema": schema
+                  }
+              )
+
+              txt = interaction.output_text
+              print(f"RAW: {txt}")
+              result = json.loads(txt)
+              updates = result.get("updates", [])
+              print(f"UPDATES: {updates}")
+
+          if not updates and not is_scheduled_reset:
               print("No relevant schedule exceptions found in this post. Exiting without changes.")
               raise SystemExit(0)
 
           # -------------------------------------------------------------
-          # 3. Merge updates onto a FRESH COPY of the master schedule.
-          #    Master schedule is never modified on disk - index.html is
-          #    regenerated from it plus today's exceptions every run.
+          # 3. Merge updates onto TODAY's effective schedule.
+          #    We persist a small state file so that if MULTIPLE companies
+          #    post on the same day, each run builds on top of what's
+          #    already been applied today instead of wiping it out. On a
+          #    NEW day, we reset back to the clean master schedule.
           # -------------------------------------------------------------
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          today = datetime.now(ZoneInfo("Asia/Manila")).date().isoformat()
+          STATE_FILE = "schedule_state.json"
+
+          state = {}
+          if os.path.exists(STATE_FILE):
+              with open(STATE_FILE, "r", encoding="utf-8") as f:
+                  state = json.load(f)
+
           with open("master_schedule.json", "r", encoding="utf-8") as f:
               master = json.load(f)
+
+          if state.get("date") == today and "schedule" in state:
+              print(f"Continuing today's ({today}) existing schedule state.")
+              schedule = state["schedule"]
+          else:
+              print(f"New day ({today}) - resetting to master schedule.")
+              schedule = {
+                  "toPG": [dict(trip) for trip in master.get("toPG", [])],
+                  "toBAT": [dict(trip) for trip in master.get("toBAT", [])],
+              }
 
           # Aliases so "Galerian Water Transport Services" (FB page name / Gemini
           # guess) matches "Galerian Water" (short name used in master_schedule.json)
@@ -212,11 +249,6 @@ jobs:
               t = t.replace("AM", " AM").replace("PM", " PM")
               t = re.sub(r'\s+', ' ', t).strip()
               return t
-
-          schedule = {
-              "toPG": [dict(trip) for trip in master.get("toPG", [])],
-              "toBAT": [dict(trip) for trip in master.get("toBAT", [])],
-          }
 
           for upd in updates:
               company = normalize_company(upd.get("company", ""))
@@ -251,6 +283,12 @@ jobs:
                           trip.pop("status", None)
                           trip.pop("note", None)
 
+          # Persist today's effective schedule so the NEXT run (possibly a
+          # different company posting later today) builds on top of this
+          # instead of resetting it.
+          with open(STATE_FILE, "w", encoding="utf-8") as f:
+              json.dump({"date": today, "schedule": schedule}, f, indent=2)
+
           # -------------------------------------------------------------
           # 4. Write merged schedule into index.html
           # -------------------------------------------------------------
@@ -268,6 +306,7 @@ jobs:
           git config --global user.name 'Schedule Bot'
           git config --global user.email 'bot@galeraguide.com'
           git add index.html
+          git add schedule_state.json
           git commit -m "Auto-synced ferry schedule exceptions [skip ci]" || exit 0
           git pull --rebase origin main
           git push
