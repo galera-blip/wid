@@ -1,5 +1,5 @@
 {
-  "date": "2026-08-14",
+  "date": "2026-08-15",
   "schedule": {
     "toPG": [
       {
@@ -73,9 +73,7 @@
       {
         "type": "Fastcraft",
         "company": "Galerian Water",
-        "time": "11:45 AM",
-        "status": "CANCELLED",
-        "note": "CANCELLED TODAY"
+        "time": "11:45 AM"
       },
       {
         "type": "Fastcraft",
