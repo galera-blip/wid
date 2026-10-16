@@ -8,42 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<!-- SCHEMA MARKUP FOR GOOGLE TRANSIT INDEXING (100% VALIDATED) -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Schedule",
-  "name": "Puerto Galera to Batangas Ferry Schedule",
-  "description": "Daily Fastcraft and RoRo ferry schedules between Puerto Galera and Batangas Port.",
-  "provider": [
-    {
-      "@type": "Organization",
-      "@id": "https://galeraguide.com/#galerian-water",
-      "name": "Galerian Water Transport",
-      "url": "https://galeraguide.com/puerto-galera-ferry-rates#galerian-rates"
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://galeraguide.com/#montenegro-lines",
-      "name": "Montenegro Shipping Lines",
-      "url": "https://galeraguide.com/puerto-galera-ferry-rates#montenegro-rates"
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://galeraguide.com/#island-water",
-      "name": "Island Water",
-      "url": "https://galeraguide.com/puerto-galera-ferry-rates#islandwater-rates"
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://galeraguide.com/#island-simara",
-      "name": "Island Simara",
-      "url": "https://galeraguide.com/puerto-galera-ferry-rates#islasimara-rates"
-    }
-  ]
-}
-</script>
-
 <style>
   :root{
     --navy: #2082A7;
@@ -359,46 +323,10 @@
 </head>
 <body>
 
-<!-- PLAIN HTML TIMETABLES FOR AI MODELS & SEARCH CRAWLERS (HIDDEN FROM VISUAL INTERFACE) -->
-<div style="display:none;" aria-hidden="false">
-  <h2>Batangas Pier to Puerto Galera (Balatero Port) Ferry Schedule</h2>
-  <table>
-    <thead><tr><th>Departure Time</th><th>Ferry Company</th><th>Vessel Type</th><th>Schedule Notes</th></tr></thead>
-    <tbody>
-      <tr><td>6:30 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>7:30 AM</td><td>Island Water</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>8:00 AM</td><td>Montenegro Shipping Lines</td><td>RoRo</td><td>Daily</td></tr>
-      <tr><td>9:45 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>10:00 AM</td><td>Island Simara</td><td>RoRo</td><td>Saturday and Sunday only</td></tr>
-      <tr><td>10:45 AM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>12:45 PM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>1:45 PM</td><td>Island Water</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>2:15 PM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
-    </tbody>
-  </table>
-
-  <h2>Puerto Galera (Balatero Port) to Batangas Pier Ferry Schedule</h2>
-  <table>
-    <thead><tr><th>Departure Time</th><th>Ferry Company</th><th>Vessel Type</th><th>Schedule Notes</th></tr></thead>
-    <tbody>
-      <tr><td>6:00 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>7:15 AM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>9:30 AM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>10:00 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>11:00 AM</td><td>Island Water</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>11:45 AM</td><td>Galerian Water Transport</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>12:30 PM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>1:00 PM</td><td>Island Simara</td><td>RoRo</td><td>Saturday and Sunday only</td></tr>
-      <tr><td>1:30 PM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>2:00 PM</td><td>Montenegro Shipping Lines</td><td>RoRo</td><td>Daily</td></tr>
-      <tr><td>3:00 PM</td><td>Island Water</td><td>Fastcraft</td><td>Daily</td></tr>
-      <tr><td>3:15 PM</td><td>Montenegro Shipping Lines</td><td>Fastcraft</td><td>Daily</td></tr>
-    </tbody>
-  </table>
-</div>
-
 <!-- HUMAN INTERACTIVE WIDGET -->
 <div class="wrap">
+  <h1 class="title">Puerto Galera & Batangas Ferries</h1>
+  <p class="subtitle">Live Daily Schedule & Status Updates</p>
 
   <div class="tabs">
     <button class="tab active" data-dir="toBAT">Puerto Galera → Batangas</button>
@@ -472,115 +400,7 @@
     return anchor ? `${RATES_BASE_URL}#${anchor}` : RATES_BASE_URL;
   }
 
-  const schedule = {
-  "toPG": [
-    {
-      "type": "Fastcraft",
-      "company": "Island Water",
-      "time": "7:30 AM"
-    },
-    {
-      "type": "RoRo",
-      "company": "Montenegro",
-      "time": "8:00 AM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "9:45 AM"
-    },
-    {
-      "type": "RoRo",
-      "company": "Island Simara",
-      "time": "10:00 AM",
-      "note": "Saturday \u2013 Sunday only"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Montenegro",
-      "time": "10:45 AM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "12:45 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Island Water",
-      "time": "1:45 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Montenegro",
-      "time": "2:15 PM"
-    }
-  ],
-  "toBAT": [
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "6:00 AM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Montenegro",
-      "time": "7:15 AM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Montenegro",
-      "time": "9:30 AM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "10:00 AM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Island Water",
-      "time": "11:00 AM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "11:45 AM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Montenegro",
-      "time": "12:30 PM"
-    },
-    {
-      "type": "RoRo",
-      "company": "Island Simara",
-      "time": "1:00 PM",
-      "note": "Saturday \u2013 Sunday only"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Montenegro",
-      "time": "1:30 PM"
-    },
-    {
-      "type": "RoRo",
-      "company": "Montenegro",
-      "time": "2:00 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Island Water",
-      "time": "3:00 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Montenegro",
-      "time": "3:15 PM"
-    }
-  ]
-};
-
+  let schedule = { toPG: [], toBAT: [] };
   let currentDir = "toBAT";
   let countdownInterval = null;
 
@@ -600,15 +420,18 @@
   }
 
   function updateNextDeparture() {
+    const trips = schedule[currentDir] || [];
+    if (trips.length === 0) return;
+    
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();
-    const trips = [...schedule[currentDir]].sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
+    const sortedTrips = [...trips].sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
 
-    let nextTrip = trips.find(t => timeToMinutes(t.time) > currentMins);
+    let nextTrip = sortedTrips.find(t => timeToMinutes(t.time) > currentMins);
     let isTomorrow = false;
 
     if (!nextTrip) {
-      nextTrip = trips[0];
+      nextTrip = sortedTrips[0];
       isTomorrow = true;
     }
 
@@ -652,7 +475,7 @@
   }
 
   function populateFilters(){
-    const trips = schedule[currentDir];
+    const trips = schedule[currentDir] || [];
     const companies = [...new Set(trips.map(t=>t.company))].sort();
     const types = [...new Set(trips.map(t=>t.type))].sort();
 
@@ -663,7 +486,7 @@
   }
 
   function render(){
-    const trips = [...schedule[currentDir]].sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
+    const trips = [...(schedule[currentDir] || [])].sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
     const q = searchInput.value.trim().toLowerCase();
     const companyVal = companyFilter.value;
     const typeVal = typeFilter.value;
@@ -719,9 +542,21 @@
   companyFilter.addEventListener('change', render);
   typeFilter.addEventListener('change', render);
 
-  populateFilters();
-  render();
-  updateNextDeparture();
+  // Load schedule data dynamically from GitHub schedule.json output
+  async function loadLiveSchedule() {
+    try {
+      const res = await fetch('https://raw.githubusercontent.com/galera-blip/wid/main/schedule.json');
+      const data = await res.json();
+      schedule = data;
+      populateFilters();
+      render();
+      updateNextDeparture();
+    } catch (err) {
+      console.error("Error loading live schedule JSON:", err);
+    }
+  }
+
+  loadLiveSchedule();
 </script>
 </body>
 </html>
