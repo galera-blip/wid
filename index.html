@@ -270,6 +270,9 @@
   .btn:hover{background:var(--orange-dark);}
   .btn:active{transform:scale(.97);}
 
+  .card.unavailable{opacity:.6;}
+  .card.unavailable .time{text-decoration:line-through;color:var(--muted);}
+
   .empty{
     text-align:center;
     color:var(--muted);
@@ -419,10 +422,27 @@
     return h*60+m;
   }
 
+  // A trip is unavailable if its note says cancelled or temporarily unavailable
+  function isUnavailable(t){
+    return /cancel+ed|temporarily\s+unavailable/i.test(t.note || '');
+  }
+
   function updateNextDeparture() {
-    const trips = schedule[currentDir] || [];
-    if (trips.length === 0) return;
-    
+    const allTrips = schedule[currentDir] || [];
+    if (allTrips.length === 0) return;
+
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+
+    // Skip cancelled / temporarily unavailable trips entirely
+    const trips = allTrips.filter(t => !isUnavailable(t));
+    if (trips.length === 0) {
+      document.getElementById('nextBoatType').textContent = '-';
+      document.getElementById('nextCompany').textContent = 'No available departures';
+      document.getElementById('nextTime').textContent = '-';
+      document.getElementById('countdownTimer').textContent = 'All trips cancelled or unavailable';
+      return;
+    }
+
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();
     const sortedTrips = [...trips].sort((a,b)=>timeToMinutes(a.time)-timeToMinutes(b.time));
@@ -511,7 +531,7 @@
     emptyState.style.display = 'none';
 
     cardList.innerHTML = filtered.map(t => `
-      <div class="card">
+      <div class="card${isUnavailable(t) ? ' unavailable' : ''}">
         <div class="icon">${iconFor(t.type)}</div>
         <div class="info">
           <div class="boat-type">${t.type}</div>
