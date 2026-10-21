@@ -3,8 +3,7 @@
     {
       "type": "Fastcraft",
       "company": "Island Water",
-      "time": "7:30 AM",
-      "note": "Confirm with operator before travel"
+      "time": "7:30 AM"
     },
     {
       "type": "RoRo",
@@ -15,7 +14,7 @@
       "type": "Fastcraft",
       "company": "Galerian Water",
       "time": "9:45 AM",
-      "note": "Confirm with operator before travel"
+      "note": "Temporarily Unavailable"
     },
     {
       "type": "RoRo",
@@ -31,14 +30,12 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "12:45 PM",
-      "note": "Confirm with operator before travel"
+      "time": "12:45 PM"
     },
     {
       "type": "Fastcraft",
       "company": "Island Water",
-      "time": "1:45 PM",
-      "note": "Confirm with operator before travel"
+      "time": "1:45 PM"
     },
     {
       "type": "Fastcraft",
@@ -51,7 +48,7 @@
       "type": "Fastcraft",
       "company": "Galerian Water",
       "time": "6:00 AM",
-      "note": "Confirm with operator before travel"
+      "note": "Temporarily Unavailable"
     },
     {
       "type": "Fastcraft",
@@ -66,20 +63,18 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "10:00 AM",
-      "note": "Confirm with operator before travel"
+      "time": "10:00 AM"
     },
     {
       "type": "Fastcraft",
       "company": "Island Water",
-      "time": "11:00 AM",
-      "note": "Confirm with operator before travel"
+      "time": "11:00 AM"
     },
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
       "time": "11:45 AM",
-      "note": "Confirm with operator before travel"
+      "note": "Temporarily Unavailable"
     },
     {
       "type": "Fastcraft",
@@ -104,9 +99,14 @@
     },
     {
       "type": "Fastcraft",
+      "company": "Galerian Water",
+      "time": "2:30 PM",
+      "note": "Additional trip"
+    },
+    {
+      "type": "Fastcraft",
       "company": "Island Water",
-      "time": "3:00 PM",
-      "note": "Confirm with operator before travel"
+      "time": "3:00 PM"
     },
     {
       "type": "Fastcraft",
