@@ -13,14 +13,7 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "8:00 AM",
-      "note": "Additional trip"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "9:45 AM",
-      "note": "Temporarily Unavailable"
+      "time": "9:45 AM"
     },
     {
       "type": "RoRo",
@@ -78,8 +71,7 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "11:45 AM",
-      "note": "Temporarily Unavailable"
+      "time": "11:45 AM"
     },
     {
       "type": "Fastcraft",
