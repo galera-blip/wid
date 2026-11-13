@@ -1,0 +1,315 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Rubik:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+#gg-cal, #gg-cal * { box-sizing: border-box; }
+#gg-cal {
+  --gg-primary: #2082a7;
+  --gg-secondary: #ff9806;
+  --gg-black: #1a1a1a;
+  --gg-white: #fafafa;
+  --gg-line: #d9e6ec;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+  background: var(--gg-white);
+  color: var(--gg-black);
+  font-family: 'Montserrat', Arial, sans-serif;
+  position: relative;
+}
+#gg-cal h2, #gg-cal h3 { font-family: 'Rubik', Arial, sans-serif; margin: 0; }
+#gg-cal .gg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+#gg-cal .gg-title { font-size: 24px; font-weight: 600; color: var(--gg-primary); text-align: center; flex: 1; }
+#gg-cal .gg-nav {
+  width: 44px; height: 44px; border: 0; border-radius: 50%; cursor: pointer;
+  background: var(--gg-primary); color: #fff; font-size: 22px; line-height: 1; font-family: 'Rubik', Arial, sans-serif;
+}
+#gg-cal .gg-nav:hover { background: #196a89; }
+#gg-cal .gg-nav:focus-visible, #gg-cal .gg-day:focus-visible, #gg-cal .gg-close:focus-visible, #gg-cal .gg-btn:focus-visible { outline: 3px solid var(--gg-secondary); outline-offset: 2px; }
+#gg-cal .gg-week, #gg-cal .gg-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+#gg-cal .gg-week div { text-align: center; font-weight: 600; font-size: 13px; color: var(--gg-primary); padding: 6px 0; text-transform: uppercase; letter-spacing: .04em; }
+#gg-cal .gg-day {
+  min-height: 104px; padding: 6px; border: 1px solid var(--gg-line); border-radius: 10px; background: #fff;
+  text-align: left; font: inherit; color: inherit; display: flex; flex-direction: column; gap: 4px; overflow: hidden;
+}
+#gg-cal .gg-empty { background: transparent; border-color: transparent; }
+#gg-cal .gg-num { font-family: 'Rubik', Arial, sans-serif; font-weight: 600; font-size: 14px; }
+#gg-cal .gg-today { border: 2px solid var(--gg-primary); }
+#gg-cal .gg-has { cursor: pointer; border-color: var(--gg-secondary); transition: transform .18s ease, box-shadow .18s ease; }
+@media (hover: hover) {
+  #gg-cal .gg-has:hover { transform: scale(1.06) rotate(1deg); box-shadow: 0 8px 20px rgba(0,0,0,.18); z-index: 2; position: relative; }
+}
+#gg-cal .gg-chip { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; line-height: 1.25; background: rgba(32,130,167,.12); border-radius: 6px; padding: 3px 5px; min-width: 0; }
+#gg-cal .gg-chip img { width: 22px; height: 22px; object-fit: cover; border-radius: 4px; flex: none; }
+#gg-cal .gg-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#gg-cal .gg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gg-secondary); flex: none; }
+#gg-cal .gg-more { font-size: 11px; font-weight: 600; color: var(--gg-primary); }
+#gg-cal .gg-overlay { position: fixed; inset: 0; background: transparent; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 99999; }
+#gg-cal .gg-overlay.gg-open { display: flex; }
+#gg-cal .gg-modal { background: var(--gg-white); border-radius: 14px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; position: relative; box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+#gg-cal .gg-close { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--gg-black); color: #fff; font-size: 20px; cursor: pointer; }
+#gg-cal .gg-modal h2 { font-size: 20px; color: var(--gg-primary); margin: 0 48px 12px 0; }
+#gg-cal .gg-event { padding: 14px 0; border-top: 1px solid var(--gg-line); }
+#gg-cal .gg-event:first-of-type { border-top: 0; padding-top: 0; }
+#gg-cal .gg-event img { width: 100%; max-height: 240px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; display: block; }
+#gg-cal .gg-event h3 { font-size: 18px; margin-bottom: 6px; }
+#gg-cal .gg-meta { font-size: 14px; margin: 2px 0; }
+#gg-cal .gg-meta b { font-weight: 600; }
+#gg-cal .gg-desc { font-size: 14px; line-height: 1.55; margin: 10px 0 0; white-space: pre-line; }
+#gg-cal .gg-btn { display: inline-block; margin-top: 12px; padding: 10px 16px; border-radius: 999px; background: var(--gg-secondary); color: var(--gg-black); font-weight: 600; font-size: 14px; text-decoration: none; }
+#gg-cal .gg-btn:hover { background: #e68600; }
+#gg-cal .gg-loading { text-align: center; padding: 20px; font-size: 14px; color: var(--gg-primary); grid-column: span 7; }
+@media (max-width: 640px) {
+  #gg-cal { padding: 10px; }
+  #gg-cal .gg-title { font-size: 19px; }
+  #gg-cal .gg-week, #gg-cal .gg-grid { gap: 3px; }
+  #gg-cal .gg-day { min-height: 54px; padding: 4px; align-items: center; }
+  #gg-cal .gg-chip, #gg-cal .gg-more { display: none; }
+}
+@media (min-width: 641px) { #gg-cal .gg-dot { display: none; } }
+@media (prefers-reduced-motion: reduce) { #gg-cal .gg-has { transition: none; } #gg-cal .gg-has:hover { transform: none; } }
+</style>
+
+<div id="gg-cal" aria-label="Galera Guide events calendar">
+  <div class="gg-head">
+    <button type="button" class="gg-nav" data-dir="-1" aria-label="Previous month">&#8249;</button>
+    <h2 class="gg-title" aria-live="polite">Loading...</h2>
+    <button type="button" class="gg-nav" data-dir="1" aria-label="Next month">&#8250;</button>
+  </div>
+  <div class="gg-week"></div>
+  <div class="gg-grid">
+    <div class="gg-loading">Loading Exciting Events...</div>
+  </div>
+  <div class="gg-overlay" role="dialog" aria-modal="true" aria-labelledby="gg-modal-title">
+    <div class="gg-modal">
+      <button type="button" class="gg-close" aria-label="Close">&times;</button>
+      <h2 id="gg-modal-title"></h2>
+      <div class="gg-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var S_ID = '1STNUvotFI7m8piTSkfDCufkBk0J690YQWs_mt-uC7iM';
+  var CSV_URL = 'https://docs.google.com/spreadsheets/d/' + S_ID + '/export?format=csv';
+
+  var root = document.getElementById('gg-cal');
+  if (!root) return;
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var titleEl = root.querySelector('.gg-title');
+  var weekEl = root.querySelector('.gg-week');
+  var gridEl = root.querySelector('.gg-grid');
+  var overlay = root.querySelector('.gg-overlay');
+  var modalTitle = root.querySelector('#gg-modal-title');
+  var listEl = root.querySelector('.gg-list');
+  var closeBtn = root.querySelector('.gg-close');
+  var lastFocus = null;
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function key(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
+  function parse(s) {
+    var p = String(s || '').split('-');
+    if (p.length !== 3) return null;
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function safeUrl(u) { return /^https:\/\//i.test(String(u || '').trim()) ? String(u).trim() : ''; }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  function parseCSV(text) {
+    var lines = [];
+    var row = [''];
+    var inQuotes = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i], next = text[i + 1];
+      if (c === '"') {
+        if (inQuotes && next === '"') { row[row.length - 1] += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (c === ',' && !inQuotes) {
+        row.push('');
+      } else if ((c === '\r' || c === '\n') && !inQuotes) {
+        if (c === '\r' && next === '\n') { i++; }
+        lines.push(row);
+        row = [''];
+      } else {
+        row[row.length - 1] += c;
+      }
+    }
+    if (row.length > 1 || row[0] !== '') lines.push(row);
+    return lines;
+  }
+
+  DAYS.forEach(function (d) { weekEl.appendChild(el('div', '', d)); });
+
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = now.getMonth();
+  var todayKey = key(now.getFullYear(), now.getMonth(), now.getDate());
+  var EVENTS = [];
+  var byDay = {};
+
+  function dayLabel(y, m, d) { return new Date(y, m, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); }
+
+  function processEventsData(rows) {
+    if (rows.length < 2) return;
+    var headers = rows[0].map(function(h) { return h.trim().toLowerCase(); });
+    var idx = {
+      date: headers.indexOf('date'),
+      endDate: headers.indexOf('enddate'),
+      title: headers.indexOf('title'),
+      time: headers.indexOf('time'),
+      place: headers.indexOf('place'),
+      description: headers.indexOf('description'),
+      image: headers.indexOf('image'),
+      link: headers.indexOf('link')
+    };
+
+    for (var i = 1; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r || r.length <= Math.max.apply(null, Object.values(idx))) continue;
+      var ev = {
+        date: (r[idx.date] || '').trim(),
+        endDate: (r[idx.endDate] || '').trim(),
+        title: (r[idx.title] || '').trim(),
+        time: (r[idx.time] || '').trim(),
+        place: (r[idx.place] || '').trim(),
+        description: (r[idx.description] || '').trim(),
+        image: (r[idx.image] || '').trim(),
+        link: (r[idx.link] || '').trim()
+      };
+      if (ev.date && ev.title) EVENTS.push(ev);
+    }
+
+    EVENTS.forEach(function (e) {
+      var start = parse(e.date);
+      if (!start) return;
+      var end = parse(e.endDate) || start;
+      if (end < start) end = start;
+      var cur = new Date(start.getTime());
+      var guard = 0;
+      while (cur <= end && guard++ < 62) {
+        var k = key(cur.getFullYear(), cur.getMonth(), cur.getDate());
+        (byDay[k] = byDay[k] || []).push(e);
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+
+    render();
+  }
+
+  function render() {
+    titleEl.textContent = MONTHS[month] + ' ' + year;
+    gridEl.innerHTML = '';
+    var first = new Date(year, month, 1).getDay();
+    var total = new Date(year, month + 1, 0).getDate();
+    var cells = Math.ceil((first + total) / 7) * 7;
+    for (var i = 0; i < cells; i++) {
+      var d = i - first + 1;
+      if (d < 1 || d > total) { gridEl.appendChild(el('div', 'gg-day gg-empty')); continue; }
+      var k = key(year, month, d);
+      var evs = byDay[k] || [];
+      var cell = el(evs.length ? 'button' : 'div', 'gg-day' + (evs.length ? ' gg-has' : '') + (k === todayKey ? ' gg-today' : ''));
+      if (evs.length) {
+        cell.type = 'button';
+        cell.setAttribute('aria-label', dayLabel(year, month, d) + ', ' + evs.length + (evs.length === 1 ? ' event' : ' events'));
+      }
+      cell.appendChild(el('span', 'gg-num', String(d)));
+      evs.slice(0, 2).forEach(function (e) {
+        var chip = el('div', 'gg-chip');
+        var img = safeUrl(e.image);
+        if (img) { var im = el('img'); im.src = img; im.alt = ''; im.loading = 'lazy'; chip.appendChild(im); }
+        chip.appendChild(el('span', '', e.title));
+        cell.appendChild(chip);
+      });
+      if (evs.length > 2) cell.appendChild(el('div', 'gg-more', '+' + (evs.length - 2) + ' more'));
+      if (evs.length) {
+        cell.appendChild(el('span', 'gg-dot'));
+        (function (yy, mm, dd, list) { cell.addEventListener('click', function () { openDay(yy, mm, dd, list); }); })(year, month, d, evs);
+      }
+      gridEl.appendChild(cell);
+    }
+  }
+
+  function fmtRange(e) {
+    var s = parse(e.date), t = parse(e.endDate);
+    var opt = { month: 'short', day: 'numeric', year: 'numeric' };
+    if (s && t && t > s) return s.toLocaleDateString('en-US', opt) + ' to ' + t.toLocaleDateString('en-US', opt);
+    return s ? s.toLocaleDateString('en-US', opt) : '';
+  }
+  function meta(label, value) {
+    if (!value) return null;
+    var p = el('p', 'gg-meta');
+    p.appendChild(el('b', '', label + ': '));
+    p.appendChild(document.createTextNode(value));
+    return p;
+  }
+
+  function openDay(y, m, d, list) {
+    modalTitle.textContent = dayLabel(y, m, d);
+    listEl.innerHTML = '';
+    list.forEach(function (e) {
+      var box = el('div', 'gg-event');
+      var img = safeUrl(e.image);
+      if (img) { var im = el('img'); im.src = img; im.alt = e.title; box.appendChild(im); }
+      box.appendChild(el('h3', '', e.title));
+      [meta('Date', fmtRange(e)), meta('Time', e.time), meta('Place', e.place)].forEach(function (p) { if (p) box.appendChild(p); });
+      if (e.description) box.appendChild(el('p', 'gg-desc', e.description));
+      var link = safeUrl(e.link);
+      if (link) { var a = el('a', 'gg-btn', 'More details'); a.href = link; a.target = '_blank'; a.rel = 'noopener noreferrer'; box.appendChild(a); }
+      listEl.appendChild(box);
+    });
+    lastFocus = document.activeElement;
+    overlay.classList.add('gg-open');
+    closeBtn.focus();
+  }
+  function closeModal() {
+    overlay.classList.remove('gg-open');
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function (ev) { if (ev.target === overlay) closeModal(); });
+  document.addEventListener('keydown', function (ev) {
+    if (!overlay.classList.contains('gg-open')) return;
+    if (ev.key === 'Escape') { closeModal(); return; }
+    if (ev.key === 'Tab') {
+      var f = overlay.querySelectorAll('button, a[href]');
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+    }
+  });
+  Array.prototype.forEach.call(root.querySelectorAll('.gg-nav'), function (b) {
+    b.addEventListener('click', function () {
+      month += +b.getAttribute('data-dir');
+      if (month < 0) { month = 11; year--; }
+      if (month > 11) { month = 0; year++; }
+      render();
+    });
+  });
+
+  fetch(CSV_URL)
+    .then(function(response) {
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.text();
+    })
+    .then(function(text) {
+      var rows = parseCSV(text);
+      processEventsData(rows);
+    })
+    .catch(function(err) {
+      console.error('Error fetching calendar events:', err);
+      gridEl.innerHTML = '<div class="gg-loading" style="color: #d9534f;">Unable to load upcoming events.</div>';
+      titleEl.textContent = MONTHS[month] + ' ' + year;
+    });
+})();
+</script>
