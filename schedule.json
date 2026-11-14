@@ -2,6 +2,12 @@
   "toPG": [
     {
       "type": "Fastcraft",
+      "company": "Galerian Water",
+      "time": "6:30 AM",
+      "note": "Additional trip"
+    },
+    {
+      "type": "Fastcraft",
       "company": "Island Water",
       "time": "7:30 AM"
     },
@@ -13,8 +19,13 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "9:45 AM",
-      "note": "Temporarily Unavailable"
+      "time": "8:00 AM",
+      "note": "Additional trip"
+    },
+    {
+      "type": "Fastcraft",
+      "company": "Galerian Water",
+      "time": "9:45 AM"
     },
     {
       "type": "RoRo",
@@ -24,20 +35,13 @@
     },
     {
       "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "10:00 AM",
-      "note": "Additional trip"
-    },
-    {
-      "type": "Fastcraft",
       "company": "Montenegro",
       "time": "10:45 AM"
     },
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "12:45 PM",
-      "note": "Temporarily Unavailable"
+      "time": "12:45 PM"
     },
     {
       "type": "Fastcraft",
@@ -52,7 +56,7 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "2:30 PM",
+      "time": "4:30 PM",
       "note": "Additional trip"
     }
   ],
@@ -60,19 +64,18 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "6:00 AM",
-      "note": "Temporarily Unavailable"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "6:30 AM",
-      "note": "Additional trip"
+      "time": "6:00 AM"
     },
     {
       "type": "Fastcraft",
       "company": "Montenegro",
       "time": "7:15 AM"
+    },
+    {
+      "type": "Fastcraft",
+      "company": "Galerian Water",
+      "time": "8:15 AM",
+      "note": "Additional trip"
     },
     {
       "type": "Fastcraft",
@@ -82,8 +85,7 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "10:00 AM",
-      "note": "Temporarily Unavailable"
+      "time": "10:00 AM"
     },
     {
       "type": "Fastcraft",
@@ -93,19 +95,12 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
-      "time": "11:45 AM",
-      "note": "Temporarily Unavailable"
+      "time": "11:45 AM"
     },
     {
       "type": "Fastcraft",
       "company": "Montenegro",
       "time": "12:30 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "12:45 PM",
-      "note": "Additional trip"
     },
     {
       "type": "RoRo",
@@ -122,6 +117,12 @@
       "type": "RoRo",
       "company": "Montenegro",
       "time": "2:00 PM"
+    },
+    {
+      "type": "Fastcraft",
+      "company": "Galerian Water",
+      "time": "2:30 PM",
+      "note": "Additional trip"
     },
     {
       "type": "Fastcraft",
