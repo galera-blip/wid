@@ -56,6 +56,12 @@
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
+      "time": "2:30 PM",
+      "note": "Additional trip"
+    },
+    {
+      "type": "Fastcraft",
+      "company": "Galerian Water",
       "time": "4:30 PM",
       "note": "Additional trip"
     }
@@ -133,6 +139,12 @@
       "type": "Fastcraft",
       "company": "Montenegro",
       "time": "3:15 PM"
+    },
+    {
+      "type": "Fastcraft",
+      "company": "Galerian Water",
+      "time": "3:45 PM",
+      "note": "Additional trip"
     }
   ]
 }
