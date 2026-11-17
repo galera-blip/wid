@@ -18,6 +18,12 @@
     },
     {
       "type": "Fastcraft",
+      "company": "Island Water",
+      "time": "9:00 AM",
+      "note": "Additional trip"
+    },
+    {
+      "type": "Fastcraft",
       "company": "Galerian Water",
       "time": "9:45 AM"
     },
@@ -49,8 +55,8 @@
     },
     {
       "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "2:30 PM",
+      "company": "Island Water",
+      "time": "3:30 PM",
       "note": "Additional trip"
     },
     {
@@ -61,6 +67,12 @@
     }
   ],
   "toBAT": [
+    {
+      "type": "Fastcraft",
+      "company": "Island Water",
+      "time": "5:00 AM",
+      "note": "Additional trip"
+    },
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
@@ -130,8 +142,8 @@
     },
     {
       "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "3:45 PM",
+      "company": "Island Water",
+      "time": "5:00 PM",
       "note": "Additional trip"
     }
   ]
