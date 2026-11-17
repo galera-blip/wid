@@ -47,6 +47,13 @@
     margin:0 0 24px;
   }
 
+  .last-updated{
+    text-align:center;
+    color:var(--muted);
+    font-size:11.5px;
+    margin:-16px 0 20px;
+  }
+
   /* direction tabs */
   .tabs{
     display:flex;
@@ -330,6 +337,7 @@
 <div class="wrap">
   <h1 class="title">Puerto Galera & Batangas Ferries</h1>
   <p class="subtitle">Daily Schedule & Status Updates</p>
+  <p class="last-updated" id="lastUpdated" aria-live="polite">Checking update time...</p>
 
   <div class="tabs">
     <button class="tab active" data-dir="toBAT">Puerto Galera → Batangas</button>
@@ -562,6 +570,37 @@
   companyFilter.addEventListener('change', render);
   typeFilter.addEventListener('change', render);
 
+  // Show the latest commit time for schedule.json in Philippine time.
+  async function loadLastUpdated() {
+    const lastUpdated = document.getElementById('lastUpdated');
+    try {
+      const response = await fetch(
+        'https://api.github.com/repos/galera-blip/wid/commits?path=schedule.json&per_page=1',
+        { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } }
+      );
+      if (!response.ok) throw new Error('Unable to retrieve schedule update time');
+
+      const commits = await response.json();
+      const timestamp = commits?.[0]?.commit?.committer?.date || commits?.[0]?.commit?.author?.date;
+      if (!timestamp) throw new Error('No schedule update timestamp found');
+
+      const formatted = new Intl.DateTimeFormat('en-PH', {
+        timeZone: 'Asia/Manila',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).format(new Date(timestamp));
+
+      lastUpdated.textContent = `Last updated: ${formatted} (PHT)`;
+    } catch (error) {
+      console.error('Error loading schedule update time:', error);
+      lastUpdated.textContent = 'Schedule update time unavailable';
+    }
+  }
+
   // Load schedule data dynamically from GitHub schedule.json output
   async function loadLiveSchedule() {
     try {
@@ -577,6 +616,7 @@
   }
 
   loadLiveSchedule();
+  loadLastUpdated();
 </script>
 </body>
 </html>
