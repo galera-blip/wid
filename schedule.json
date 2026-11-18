@@ -18,12 +18,6 @@
     },
     {
       "type": "Fastcraft",
-      "company": "Island Water",
-      "time": "9:00 AM",
-      "note": "Additional trip"
-    },
-    {
-      "type": "Fastcraft",
       "company": "Galerian Water",
       "time": "9:45 AM"
     },
@@ -52,27 +46,9 @@
       "type": "Fastcraft",
       "company": "Montenegro",
       "time": "2:15 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Island Water",
-      "time": "3:30 PM",
-      "note": "Additional trip"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "4:30 PM",
-      "note": "Additional trip"
     }
   ],
   "toBAT": [
-    {
-      "type": "Fastcraft",
-      "company": "Island Water",
-      "time": "5:00 AM",
-      "note": "Additional trip"
-    },
     {
       "type": "Fastcraft",
       "company": "Galerian Water",
@@ -126,12 +102,6 @@
     },
     {
       "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "2:30 PM",
-      "note": "Additional trip"
-    },
-    {
-      "type": "Fastcraft",
       "company": "Island Water",
       "time": "3:00 PM"
     },
@@ -139,12 +109,6 @@
       "type": "Fastcraft",
       "company": "Montenegro",
       "time": "3:15 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Island Water",
-      "time": "5:00 PM",
-      "note": "Additional trip"
     }
   ]
 }
