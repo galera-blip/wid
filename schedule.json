@@ -46,12 +46,6 @@
       "type": "Fastcraft",
       "company": "Montenegro",
       "time": "2:15 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "4:30 PM",
-      "note": "Additional trip"
     }
   ],
   "toBAT": [
@@ -105,12 +99,6 @@
       "type": "RoRo",
       "company": "Montenegro",
       "time": "2:00 PM"
-    },
-    {
-      "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "2:30 PM",
-      "note": "Additional trip"
     },
     {
       "type": "Fastcraft",
