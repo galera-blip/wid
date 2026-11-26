@@ -2,12 +2,6 @@
   "toPG": [
     {
       "type": "Fastcraft",
-      "company": "Galerian Water",
-      "time": "6:30 AM",
-      "note": "Additional trip"
-    },
-    {
-      "type": "Fastcraft",
       "company": "Island Water",
       "time": "7:30 AM"
     },
